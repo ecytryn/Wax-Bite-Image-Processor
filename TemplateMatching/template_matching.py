@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 
-img = cv2.imread("img/aug_4_2017 LG_219_U_0.8xtry4.jpg", cv2.IMREAD_GRAYSCALE)
+img = cv2.imread("img/sep_15_2017 LG_219_U_0.8x.jpg", cv2.IMREAD_GRAYSCALE)
 template = cv2.imread("template/1.jpg",cv2.IMREAD_GRAYSCALE)
 h, w = template.shape
 
@@ -23,13 +23,12 @@ for method in methods:
     # bottom_right = (location[0] + w, location[1] + h)
 
 
-    threshold = 0.6
-    iou_threshold = 0.4
+    threshold = 0.5
+    iou_threshold = 0.3
     loc = np.where(result >= threshold) #returns indices where this happens
     teeth = []
 
     for pt in zip(*loc[::-1]):
-        print(teeth)
         intersect = False
         for tooth in teeth:
             xA = max(pt[0], tooth[0])
@@ -41,14 +40,12 @@ for method in methods:
             iou = interArea / float(2*w*h - interArea)
             if iou > iou_threshold:
                 intersect = True
-                try: 
-                    if result[pt[0]][pt[1]] > result[tooth[0]][tooth[1]]:
-                        tooth = pt
-                except:
-                    pass
+                if result[pt[1]][pt[0]] > result[tooth[1]][tooth[0]]:
+                    tooth = pt
+                    
         if not intersect:
             teeth.append(pt)
-            cv2.rectangle(img2, pt, (pt[0] + w, pt[1] + h), (0,0,255), 2)
+            cv2.rectangle(img2, pt, (pt[0] + w, pt[1] + h), (255,255,0), 2)
 
     plt.subplot(121),plt.imshow(result,cmap = 'gray')
     plt.title('Matching Result'), plt.xticks([]), plt.yticks([])
