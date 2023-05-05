@@ -6,8 +6,8 @@ import pandas as pd
 import time
 
 # params (tweek these!)
-THRESHOLD = 0.7
-IOU_THRESHOLD = 0.2
+THRESHOLD = 0.75
+IOU_THRESHOLD = 0.05
 FILETYPE = ".jpg"
 METHODS = [cv2.TM_CCOEFF_NORMED] 
 
