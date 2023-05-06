@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 import noise_filtering
+from PIL import Image
 
 
 def solve(data):
@@ -15,10 +16,12 @@ def solve(data):
         solved = np.matmul(np.linalg.inv(np.matmul(matrix_t, matrix)),np.matmul(matrix_t, np.ones(np.shape(matrix)[0])))
         fit = plot_hyperbola(x[0], x[-1], solved)
 
+        img = np.asarray(Image.open(f'{csv[:len(csv)-4]}.jpg').convert("L"))
         fig, ax = plt.subplots()
-        ax.plot(fit[0], fit[1], '.-y', label="fit")
-        ax.plot(x, y, '.-', label="data")
-        plt.show()
+        plt.imshow(img)
+        ax.plot(fit[0], fit[1], '.-r', label="fit")
+        plt.savefig(f"{csv[0:len(csv)-4]}_fitted.png")
+        # plt.show()
 
 def plot_hyperbola(start, end, coeff):
     x = np.linspace(start, end, num=100)
@@ -37,4 +40,4 @@ def plot_hyperbola(start, end, coeff):
     
 if __name__ == "__main__":
     data = [file for file in os.listdir(os.getcwd()) if file[len(file)-4:] == ".csv"]
-    solve(data[0:1])
+    solve(data)
