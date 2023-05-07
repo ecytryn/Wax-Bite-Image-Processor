@@ -22,7 +22,7 @@ def continuity_filter(csv):
     df['gradient_even'] = np.gradient(y)
     df['smoothness_even'] = np.gradient(df['gradient'])
 
-    # plt.style.use('bmh')
+    plt.style.use('bmh')
     fig, ((ax1, ax2, ax3, ax4),(ax5, ax6, ax7, ax8), (ax9, ax10, ax11, ax12)) = plt.subplots(3, 4)
     fig.set_figwidth(WIDTH_SIZE)
     fig.set_figheight(HEIGHT_SIZE)
