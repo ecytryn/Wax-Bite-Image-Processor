@@ -44,7 +44,6 @@ class ImageProcessor:
         self.make_dir("fit visualization")
         self.make_dir("projection")
         self.make_dir("projection sampling")
-        self.make_dir("projection gradient")
         self.make_dir("projection graphed")
         os.chdir(current)
 
@@ -58,7 +57,7 @@ class ImageProcessor:
         templates = [file for file in os.listdir(os.path.join(os.getcwd(),"template")) if file[len(file)-4:] == self.file_type]
         template_matching.template_matching(f"{self.name}{self.file_type}", templates, 0.75, 0.05)
         if displayTime:
-            print(f"MATCH | '{self.name}{self.file_type}': {time.time()-start_time} s")
+            print(f"MATCH       || '{self.name}{self.file_type}': {time.time()-start_time} s")
         plt.close("all")
     
 
@@ -71,23 +70,24 @@ class ImageProcessor:
         noise_filtering.continuity_filter(f"{self.name}.csv", gradthreshold, gradeventhreshold, 
                                           smooththreshold, smootheventhreshold)
         if displayTime:
-            print(f"FILTER | '{self.name}{self.file_type}': {time.time()-start_time} s")
+            print(f"FILTER      || '{self.name}{self.file_type}': {time.time()-start_time} s")
         plt.close("all")
 
 
-    def fit_project(self, displayTime: bool = False):
+    def fit_project(self, displayTime: bool = False, intensity_window_width: int = 0):
         start_time = time.time()
         path = os.path.join('processed', "filter data",f"{self.name}.csv")
         img_path = os.path.join('img', f"{self.name}{self.file_type}")
         assert os.path.isfile(path), f"'{self.name}.csv' does not exist"
         assert os.path.isfile(img_path), f"'{self.name}{self.file_type}' does not exist"
+
         try:
-            hyperbola_solve.solve(f"{self.name}.csv", self.file_type, self.height, "grad")
+            hyperbola_solve.solve(f"{self.name}.csv", self.file_type, self.height, "grad", intensity_window_width)
         except RuntimeError as err:
             print(err)
 
         if displayTime:
-            print(f"FIT PROJECT | '{self.name}{self.file_type}': {time.time()-start_time} s")
+            print(f"FIT PROJECT || '{self.name}{self.file_type}': {time.time()-start_time} s")
         plt.close("all")
 
 
@@ -98,8 +98,9 @@ if __name__ == "__main__":
     FILETYPE = ".jpg"
     assert os.path.isdir(os.path.join(os.getcwd(),'img')), 'img directory does not exist'
     images = [file for file in os.listdir(os.path.join(os.getcwd(),"img")) if file[len(file)-len(FILETYPE):] == FILETYPE]
-    for image in images:
+    for image in images[3:4]:
         process_img = ImageProcessor(image, FILETYPE)
         process_img.match(True)
         process_img.filter(True)
-        process_img.fit_project(True)
+        process_img.fit_project(True, 10)
+        print("\n")
