@@ -11,6 +11,8 @@ import warnings
 import template_matching
 import noise_filtering
 import hyperbola_solve
+from dataclass import Match
+
 
 class ImageProcessor:
     
@@ -35,10 +37,15 @@ class ImageProcessor:
             plt.style.use('bmh')
 
         current = os.getcwd()
+        self.make_dir("img")
+        self.make_dir("template")
+        self.make_dir("template 1D")
         self.make_dir("processed")
         os.chdir(os.path.join(current,"processed"))
         self.make_dir("match visualization")
         self.make_dir("match data")
+        self.make_dir("match visualization 1D")
+        self.make_dir("match data 1D")
         self.make_dir("filter visualization")
         self.make_dir("filter data")
         self.make_dir("fit visualization")
@@ -52,12 +59,21 @@ class ImageProcessor:
         if not os.path.isdir(name):
             os.mkdir(name)
 
-    def match(self, displayTime: bool = False):
+    def match(self, displayTime: bool = False, mode = Match.TWO_D):
         start_time = time.time()
-        templates = [file for file in os.listdir(os.path.join(os.getcwd(),"template")) if file[len(file)-4:] == self.file_type]
-        template_matching.template_matching(f"{self.name}{self.file_type}", templates, 0.75, 0.05)
-        if displayTime:
+        if mode == Match.TWO_D:
+            templates = [file for file in os.listdir(os.path.join(os.getcwd(),"template")) if file[len(file)-4:] == self.file_type]
+            template_matching.template_matching(f"{self.name}{self.file_type}", mode, templates, 0.75, 0.05)
+        if mode == Match.ONE_D:
+            templates = [file for file in os.listdir(os.path.join(os.getcwd(),"template 1D")) if file[len(file)-4:] == self.file_type]
+            try:
+                template_matching.template_matching(f"{self.name}{self.file_type}", mode, templates, 0.75, 0.05)
+            except RuntimeError as err:
+                print(err)
+        if displayTime and mode == Match.TWO_D:
             print(f"MATCH       | '{self.name}{self.file_type}': {time.time()-start_time} s")
+        if displayTime and mode == Match.ONE_D:
+            print(f"MATCH 1D    | '{self.name}{self.file_type}': {time.time()-start_time} s")
         plt.close("all")
     
 
@@ -66,7 +82,7 @@ class ImageProcessor:
                smooththreshold: float = 0.5, smootheventhreshold: float = 5):
         start_time = time.time()
         path = os.path.join('processed', "match data",f"{self.name}.csv")
-        assert os.path.isfile(path), f"'{self.name}.csv' does not exist"
+        assert os.path.isfile(path), f"'{self.name}.csv' does not exist - did you run match first?"
         noise_filtering.continuity_filter(f"{self.name}.csv", gradthreshold, gradeventhreshold, 
                                           smooththreshold, smootheventhreshold)
         if displayTime:
@@ -78,8 +94,8 @@ class ImageProcessor:
         start_time = time.time()
         path = os.path.join('processed', "filter data",f"{self.name}.csv")
         img_path = os.path.join('img', f"{self.name}{self.file_type}")
-        assert os.path.isfile(path), f"'{self.name}.csv' does not exist"
-        assert os.path.isfile(img_path), f"'{self.name}{self.file_type}' does not exist"
+        assert os.path.isfile(path), f"'{self.name}.csv' does not exist - did you run filter first?"
+        assert os.path.isfile(img_path), f"'{self.name}{self.file_type}' does not exist - did you run filter first?"
 
         try:
             hyperbola_solve.solve(f"{self.name}.csv", self.file_type, self.height, "grad", intensity_window_width)
@@ -96,12 +112,12 @@ warnings.filterwarnings('ignore')
 
 if __name__ == "__main__":
     FILETYPE = ".jpg"
-    assert os.path.isdir(os.path.join(os.getcwd(),'img')), 'img directory does not exist'
     images = [file for file in os.listdir(os.path.join(os.getcwd(),"img")) if file[len(file)-len(FILETYPE):] == FILETYPE]
     print("============================================================")
     for image in images:
         process_img = ImageProcessor(image, FILETYPE)
-        process_img.match(True)
-        process_img.filter(True)
-        process_img.fit_project(True, 10)
+        # process_img.match(True, Match.TWO_D)
+        # process_img.filter(True)
+        # process_img.fit_project(True, 10)
+        process_img.match(True, Match.ONE_D)
         print("============================================================")

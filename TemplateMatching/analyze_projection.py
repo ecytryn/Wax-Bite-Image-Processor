@@ -42,8 +42,7 @@ def avg_intesity(data, window_width, CSV):
     ax2.plot(range(len(avg_intensity_graph)),avg_intensity_graph, color='y')
 
     local_max_index, _ = find_peaks(avg_intensity_graph, distance=30)
-    arrayof100 = [100 for _ in range(len(local_max_index))]
-    ax2.scatter(local_max_index,arrayof100, color='r')
+    ax2.scatter(local_max_index,np.ones(len(local_max_index)), color='r')
 
 
     target = os.path.join(current_dir,"processed", "projection graphed")

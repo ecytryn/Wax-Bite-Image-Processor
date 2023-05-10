@@ -5,10 +5,12 @@ import os
 import pandas as pd
 import time
 
+from dataclass import Match
+
 # params (tweek these!)
 METHODS = [cv2.TM_CCOEFF_NORMED] 
 
-def template_matching(IMG_NAME, TEMPLATES, THRESHOLD, IOU_THRESHOLD):
+def template_matching(IMG_NAME, mode, TEMPLATES, THRESHOLD, IOU_THRESHOLD):
     """ This function reads all jpg from the img folder and runs multi-template matching on it.
     The "coordinates" for teeth (top-left pixel of it) is outputted in a CSV file. Copies of the 
     images labelled with the suspected teeth are also generated for reference.
@@ -29,10 +31,17 @@ def template_matching(IMG_NAME, TEMPLATES, THRESHOLD, IOU_THRESHOLD):
     teeth = []
     for template in TEMPLATES:
         # load template
-        t = cv2.imread(os.path.join("template", template),cv2.IMREAD_GRAYSCALE)
+        if mode == Match.TWO_D:
+            t = cv2.imread(os.path.join("template", template),cv2.IMREAD_GRAYSCALE)
+            img = cv2.imread(os.path.join("img", IMG_NAME), cv2.IMREAD_GRAYSCALE)
+        else: 
+            t = cv2.imread(os.path.join("template 1D", template),cv2.IMREAD_GRAYSCALE)
+            if os.path.isfile(os.path.join("processed", "projection", IMG_NAME)):
+                img = cv2.imread(os.path.join("processed", "projection", IMG_NAME), cv2.IMREAD_GRAYSCALE)
+            else: 
+                raise RuntimeError(f"{IMG_NAME} was not found in /processed/projection. Possibly a Hyperbola was not interpolated, or did you run fit_project first? ")
 
         # load images and dimensions 
-        img = cv2.imread(os.path.join("img", IMG_NAME), cv2.IMREAD_GRAYSCALE)
         h, w = t.shape
 
         for method in METHODS:
@@ -60,7 +69,11 @@ def template_matching(IMG_NAME, TEMPLATES, THRESHOLD, IOU_THRESHOLD):
         
 
     data = {'x':[],'y':[], 'w':[],'h':[], 'score':[], 'match':[]}
-    img = cv2.imread(os.path.join("img", IMG_NAME), cv2.IMREAD_GRAYSCALE)
+    if mode == Match.ONE_D:
+        img = cv2.imread(os.path.join("processed", "projection", IMG_NAME), cv2.IMREAD_GRAYSCALE)
+    else:
+        img = cv2.imread(os.path.join("img", IMG_NAME), cv2.IMREAD_GRAYSCALE)
+
     for pt in teeth:
         cv2.rectangle(img, (pt[0], pt[1]), (pt[0] + pt[2], pt[1] + pt[3]), (255,255,0), 2)
         data['x'].append(pt[0])
@@ -76,9 +89,15 @@ def template_matching(IMG_NAME, TEMPLATES, THRESHOLD, IOU_THRESHOLD):
     # saves to coordinates saves marked image in appropriate folders
     current_dir = os.getcwd()
     processed_dir = os.path.join(current_dir,"processed")
-    os.chdir(os.path.join(processed_dir,"match data"))
+    if mode == Match.ONE_D:
+        os.chdir(os.path.join(processed_dir,"match data 1D"))
+    else:
+        os.chdir(os.path.join(processed_dir,"match data"))
     df.to_csv(f"{IMG_NAME[:len(IMG_NAME)-4]}.csv")
-    os.chdir(os.path.join(processed_dir,"match visualization"))
+    if mode == Match.ONE_D:
+        os.chdir(os.path.join(processed_dir,"match visualization 1D"))
+    else:
+        os.chdir(os.path.join(processed_dir,"match visualization"))
     cv2.imwrite(f"{IMG_NAME[:len(IMG_NAME)-4]}.jpg", img)
     os.chdir(current_dir)
 
