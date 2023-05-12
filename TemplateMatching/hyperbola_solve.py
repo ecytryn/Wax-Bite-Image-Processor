@@ -59,10 +59,14 @@ def solve(FILE_NAME, IMG_NAME, IMG_HEIGHT, FILTER, WINDOW_WIDTH: int = 0):
         raise RuntimeError(f"Unable to fit a Hyperbola or Parabola; Circle or Ellipse detected.\nSee {FILE_NAME[0:len(FILE_NAME)-4]}.jpg in /processed/fit visualization for more detail.\nA={A}, B={B}, C={C}, D={D}, E={E}")
 
     projected_img = []
+    normals_x = []
+    normals_y = []
 
     for i in range(len(fit[0])):
         projection = project_1D.project_one(fit[0][i], fit[1][i], solved)
         temp = []
+        normals_x.append(projection[2][0])
+        normals_y.append(projection[2][1])
         for j in range(len(projection[0])):
             try:
                 pixel = img[projection[1][j],projection[0][j]]
@@ -71,6 +75,18 @@ def solve(FILE_NAME, IMG_NAME, IMG_HEIGHT, FILTER, WINDOW_WIDTH: int = 0):
                 temp.append([255,255,255])
         projected_img.append(temp)
         ax.plot(projection[0], projection[1], '.-y', label="projection")
+
+
+    # sets up a data frame to store projection data
+    df_project_data = pd.DataFrame()
+    df_project_data["arclength loc"] = range(len(fit[0]))
+    df_project_data["x_2D"] = fit[0]
+    df_project_data["y_2D"] = fit[1]
+    df_project_data["normal_x"] = normals_x
+    df_project_data["normal_y"] = normals_y
+
+    target = os.path.join(current_dir,"processed", "projection data", f"{IMG_NAME}.csv")
+    df_project_data.to_csv(target)
 
     target = os.path.join(current_dir,"processed", "projection")
     os.chdir(target)
@@ -123,7 +139,7 @@ def equidistant_set(start, end, coeff):
         result[1].append(curr_y)
         prev_x = curr_x
         prev_y = curr_y
-    
+
     return result
     
 

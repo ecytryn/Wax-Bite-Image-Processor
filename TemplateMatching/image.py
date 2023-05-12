@@ -54,6 +54,9 @@ class ImageProcessor:
         self.make_dir("projection graphed")
         self.make_dir("manual data")
         self.make_dir("manual visualization")
+        self.make_dir("manual data 1D")
+        self.make_dir("manual visualization 1D")
+        self.make_dir("projection data")
         os.chdir(current)
 
     @staticmethod
@@ -76,8 +79,7 @@ class ImageProcessor:
             print(f"MATCH       | '{self.file_name}: {time.time()-start_time} s")
         if displayTime and mode == Match.ONE_D:
             print(f"MATCH 1D    | '{self.file_name}': {time.time()-start_time} s")
-        plt.close("all")
-    
+        self.end_procedure()    
 
     def filter(self,displayTime: bool = False, 
                gradthreshold: float = 5, gradeventhreshold: float = 50,
@@ -89,8 +91,7 @@ class ImageProcessor:
                                           smooththreshold, smootheventhreshold)
         if displayTime:
             print(f"FILTER      | '{self.file_name}': {time.time()-start_time} s")
-        plt.close("all")
-
+        self.end_procedure()
 
     def fit_project(self, displayTime: bool = False, window_width: int = 0):
         start_time = time.time()
@@ -106,13 +107,23 @@ class ImageProcessor:
 
         if displayTime:
             print(f"FIT PROJECT | '{self.file_name}': {time.time()-start_time} s")
-        plt.close("all")
+        self.end_procedure()
     
-    def manual(self):
+    def manual(self, displayTime: bool = False, mode = Match.ONE_D):
+        start_time = time.time()
         try:
-            GUI.GUI(self.file_name, self.name)
+            GUI.GUI(self.file_name, self.name, mode)
         except RuntimeError as err:
             print(err)
+        if displayTime:
+            print(f"MANUAL      | '{self.file_name}': {time.time()-start_time} s")
+        self.end_procedure()
+
+    @staticmethod
+    def end_procedure():
+        plt.close("all")
+        cv2.destroyAllWindows()
+
 
 
 # suppresses warnings
@@ -134,6 +145,6 @@ if __name__ == "__main__":
         # process_img.filter(True)
         # process_img.fit_project(True, 10)
         # process_img.match(True, Match.ONE_D)
-        process_img.manual()
+        process_img.manual(True, Match.TWO_D)
         print("============================================================")
 

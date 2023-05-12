@@ -4,47 +4,59 @@ import pandas as pd
 import numpy as np
 from dataclass import Tooth
 from pynput.keyboard import Key, Controller
+from dataclass import Match
 
 
 # I think it's BGR for some reason, not RGB
 GAP_YELLOW=(0,255,255)
 TOOTH_RED=(0,0,255)
-GREY = (220,220,220)
+CENTER_CYAN = (255,255,0)
+GREY = (100,100,100)
 REC_THICKNESS = 2
-WIN_NAME = "Show me those baby whites!"
 SQUARE = 30
+STORE_MODE = Tooth.TOOTH
 MODE = Tooth.TOOTH
+MODES = [Tooth.TOOTH, Tooth.GAP, Tooth.CENTER_T, Tooth.CENTER_G]
 
-x = []
-y = []
-w = []
-h = []
-type = []
+
+x = np.array([])
+y = np.array([])
+w = np.array([])
+h = np.array([])
+type = np.array([])
 clone = 0
 
 
-def GUI(FILE_NAME, NAME):
+def GUI(FILE_NAME, NAME, mode):
+    global x, y, w, h, type, clone, MODE, STORE_MODE
 
-    global x, y, w, h, type, clone, MODE
+    MODE = Tooth.TOOTH
+    STORE_MODE = Tooth.TOOTH
 
-    IMG_PATH = os.path.join("processed", "projection", FILE_NAME)
-    IMG_DATA_PATH = os.path.join("processed", "match data 1D", f"{NAME}.csv")
+    if mode == Match.ONE_D:
+        IMG_PATH = os.path.join("processed", "projection", FILE_NAME)
+        IMG_DATA_PATH = os.path.join("processed", "match data 1D", f"{NAME}.csv")
+    else:
+        IMG_PATH = os.path.join("img", FILE_NAME)
+        IMG_DATA_PATH = os.path.join("processed", "match data", f"{NAME}.csv") 
 
-    if not os.path.isfile(IMG_PATH) or not os.path.isfile(IMG_DATA_PATH):
-        raise RuntimeError(f"{FILE_NAME} or {NAME} does not exist. A hyperbola fit was likely not found or did you run fit_project first?")
+    if not os.path.isfile(IMG_PATH):
+        raise RuntimeError(f"{IMG_PATH} does not exist in . A hyperbola fit was likely not found or did you run fit_project first?")
+    if not os.path.isfile(IMG_DATA_PATH):
+        print(f"{IMG_DATA_PATH} not found, empty data set used")
+    else:
+        df = pd.read_csv(IMG_DATA_PATH)
+        df["type"] = [Tooth.TOOTH for _ in range(len(df.index))]
+        x = df["x"].to_numpy()
+        y = df["y"].to_numpy()
+        w = df["w"].to_numpy()
+        h = df["h"].to_numpy()
+        type = df["type"].to_numpy()
 
     image = cv2.imread(IMG_PATH)
-    df = pd.read_csv(IMG_DATA_PATH)
-    df["type"] = [Tooth.TOOTH for _ in range(len(df.index))]
-
-    x = df["x"].to_numpy()
-    y = df["y"].to_numpy()
-    w = df["w"].to_numpy()
-    h = df["h"].to_numpy()
-    type = df["type"].to_numpy()
-
-    cv2.namedWindow(WIN_NAME)
-    cv2.setMouseCallback(WIN_NAME, left_click)
+    cv2.namedWindow(NAME)
+    cv2.setMouseCallback(NAME, left_click)
+    mode_index = 0
 
     while 1:
         clone = image.copy()
@@ -54,37 +66,78 @@ def GUI(FILE_NAME, NAME):
         # border_img = cv2.copyMakeBorder(clone, 1000, 1000, 0, 0, cv2.BORDER_CONSTANT, value=GREY)
         if MODE == Tooth.TOOTH:
             text_img = cv2.putText(clone, "mode: tooth", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, TOOTH_RED, 2)
-        else: 
+        elif MODE == Tooth.GAP: 
             text_img = cv2.putText(clone, "mode: gap", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, GAP_YELLOW, 2)
-        cv2.imshow(WIN_NAME, text_img)
+        elif MODE == Tooth.CENTER_T: 
+            text_img = cv2.putText(clone, "mode: center tooth", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, CENTER_CYAN, 2)
+        elif MODE == Tooth.CENTER_G:
+            text_img = cv2.putText(clone, "mode: center gap", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, CENTER_CYAN, 2)
+        else:
+            text_img = cv2.putText(clone, "mode: viewing", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, GREY, 2)
+
+        cv2.imshow(NAME, text_img)
         key = cv2.waitKey(0)
         if key == 32:
-            cv2.destroyAllWindows()
-            break
-        if key == 27:
-            cv2.destroyAllWindows()
-            break
-        if key == 9:
-            if MODE == Tooth.GAP:
-                MODE = Tooth.TOOTH
+            if MODE == Tooth.NO_BOX:
+                MODE = STORE_MODE
             else:
-                MODE = Tooth.GAP
-        if key == ord("s"):
-            save(FILE_NAME, NAME)
+                STORE_MODE = MODE
+                MODE = Tooth.NO_BOX
+        elif key == 27:
+            cv2.destroyAllWindows()
             break
+        elif key == 9 and MODE != Tooth.NO_BOX:
+            mode_index = (mode_index + 1) % len(MODES)
+            MODE = MODES[mode_index]
+        elif key == ord("s"):
+            save(FILE_NAME, NAME, mode)
+            break
+        elif key == ord("1"):
+            MODE = Tooth.TOOTH
+            mode_index = 0
+        elif key == ord("2"):
+            MODE = Tooth.GAP
+            mode_index = 1
+        elif key == ord("3"):
+            MODE = Tooth.CENTER_T
+            mode_index = 2
+        elif key == ord("4"):
+            MODE = Tooth.CENTER_G
+            mode_index = 3
 
-def draw_tooth(image, x, y, w, h, MODE):
+def draw_tooth(image, x, y, w, h, mode):
+    OFFSET_X = -5
+    OFFSET_Y = 5
+
     center_x = int(x + 1/2 * w)
     center_y = int(y + 1/2 * h)
     end_x = x + w
     end_y = y + h
-    if MODE == Tooth.TOOTH:
+
+    label = "0"
+
+    if mode == Tooth.TOOTH:
         color = TOOTH_RED
-    else:
+    elif mode == Tooth.GAP:
         color = GAP_YELLOW
-    image_rec = draw_rectangle(image, x, y, end_x, end_y, color)
-    image_cen = draw_center(image_rec, center_x, center_y, color)
-    return image_cen
+    elif mode == Tooth.CENTER_T :
+        color = CENTER_CYAN
+    elif mode == Tooth.CENTER_G:
+        color = CENTER_CYAN
+
+    
+    if mode == Tooth.CENTER_G:
+        image_labelled = draw_label(image, center_x+OFFSET_X, center_y+OFFSET_Y, color, "G")
+    elif mode == Tooth.CENTER_T:
+        image_labelled = draw_label(image, center_x+OFFSET_X, center_y+OFFSET_Y, color, "T")
+    else: 
+        image_labelled = draw_center(image, center_x, center_y, color)
+
+    if MODE == Tooth.NO_BOX:
+        return image_labelled
+
+    image_rec = draw_rectangle(image_labelled, x, y, end_x, end_y, color)
+    return image_rec
 
 def draw_rectangle(image, x, y, end_x, end_y, COLOR):
     THICKNESS = 2
@@ -95,10 +148,14 @@ def draw_center(image, center_x, center_y, COLOR):
     new_img = cv2.circle(image, (center_x, center_y), radius=5, color=COLOR, thickness=-1)
     return new_img
 
+def draw_label(image, x, y, color, label):
+    new_img = cv2.putText(image, label, (x,y), cv2.FONT_HERSHEY_DUPLEX, 0.7, color, 2)
+    return new_img
+
 def left_click(event, clicked_x, clicked_y, flags, params):
 
     global x, y, w, h, type
-    if event == cv2.EVENT_LBUTTONUP:
+    if event == cv2.EVENT_LBUTTONUP and MODE != Tooth.NO_BOX:
         draw = True
         for index in range(len(x)):
             if clicked_x >= x[index] and clicked_x <= x[index]+w[index] and clicked_y >= y[index] and clicked_y <= y[index]+h[index]:
@@ -109,6 +166,24 @@ def left_click(event, clicked_x, clicked_y, flags, params):
                 type = np.delete(type, index)
                 draw = False
                 break
+
+        if draw and (MODE == Tooth.CENTER_T or MODE == Tooth.CENTER_G):
+            center_t = np.where(type == Tooth.CENTER_T)
+            for index in center_t[0]:
+                x = np.delete(x, index)
+                y = np.delete(y, index)
+                w = np.delete(w, index)
+                h = np.delete(h, index)
+                type = np.delete(type, index)
+
+            center_g = np.where(type == Tooth.CENTER_G)
+            for index in center_g[0]:
+                x = np.delete(x, index)
+                y = np.delete(y, index)
+                w = np.delete(w, index)
+                h = np.delete(h, index)
+                type = np.delete(type, index)
+
         if draw:
             new_x = int(clicked_x - 1/2 * SQUARE)
             new_y = int(clicked_y - 1/2 * SQUARE)
@@ -117,13 +192,18 @@ def left_click(event, clicked_x, clicked_y, flags, params):
             w = np.append(w, SQUARE)
             h = np.append(h, SQUARE)
             type = np.append(type, MODE)
+
         keyboard = Controller()
         keyboard.press("a")
         keyboard.release("a")
 
-def save(FILE_NAME, NAME):
-    PATH_IMG = os.path.join("processed", "manual visualization", FILE_NAME)
-    PATH_DATA = os.path.join("processed", "manual data", f"{NAME}.csv")
+def save(FILE_NAME, NAME, mode):
+    if mode == Match.ONE_D:  
+        PATH_IMG = os.path.join("processed", "manual visualization 1D", FILE_NAME)
+        PATH_DATA = os.path.join("processed", "manual data 1D", f"{NAME}.csv")
+    else:
+        PATH_IMG = os.path.join("processed", "manual visualization", FILE_NAME)
+        PATH_DATA = os.path.join("processed", "manual data", f"{NAME}.csv")
     cv2.imwrite(PATH_IMG, clone)
     df = pd.DataFrame()
     df["x"] = x

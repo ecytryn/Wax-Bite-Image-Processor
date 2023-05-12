@@ -7,3 +7,6 @@ class Match(Enum):
 class Tooth(Enum):
     TOOTH = 1
     GAP = 2
+    CENTER_T = 3
+    CENTER_G = 4
+    NO_BOX = 5

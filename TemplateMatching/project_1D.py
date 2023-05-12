@@ -25,4 +25,4 @@ def project_one(x, y, coeff):
     df = pd.DataFrame({'x': normal_x, 'y': normal_y})
     df.sort_values(by=['y'], inplace=True)
 
-    return (df['x'].to_numpy(), df['y'].to_numpy())
+    return (df['x'].to_numpy(), df['y'].to_numpy(), normal_h)
