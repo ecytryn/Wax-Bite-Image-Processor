@@ -71,7 +71,7 @@ class CONFIG:
     HEIGHT_SIZE = 7
 
     # directories that will be created in /processed
-    DIRS_TO_MAKE = ['match visualization', 'match data', 'match visualization 1D', 'match data 1D'
+    DIRS_TO_MAKE = ['match visualization', 'match data', 'match visualization 1D', 'match data 1D',
                 'filter visualization', 'filter data', 'fit visualization',
                 'projection', 'projection sampling', 'projection graphed', 'projection data',
                 'manual data', 'manual visualization', 'manual data 1D', 'manual visualization 1D']

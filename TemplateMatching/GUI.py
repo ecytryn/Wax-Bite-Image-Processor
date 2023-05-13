@@ -36,7 +36,7 @@ def GUI(file_name, img_name, mode):
         IMG_DATA_PATH = os.path.join("processed", "match data", f"{img_name}.csv") 
 
     if not os.path.isfile(IMG_PATH):
-        raise RuntimeError(f"{IMG_PATH} does not exist in . A hyperbola fit was likely not found or did you run fit_project first?")
+        raise RuntimeError(f"{IMG_PATH} does not exist. A hyperbola fit was likely not found or did you run fit_project first?")
     if not os.path.isfile(IMG_DATA_PATH):
         print(f"{IMG_DATA_PATH} not found, empty data set used")
     else:
@@ -206,6 +206,7 @@ def save(file_name, img_name, mode):
     df["w"] = w
     df["h"] = h
     df["type"] = type
+    df.sort_values(by=["x"], inplace=True)
     df.to_csv(PATH_DATA)
     cv2.destroyAllWindows()
 

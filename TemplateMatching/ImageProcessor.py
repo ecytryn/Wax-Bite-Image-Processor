@@ -86,11 +86,15 @@ class ImageProcessor:
 
 
 
-    def filter(self, display_time: bool = False):
+    def filter(self, display_time: bool = False, manual: bool = False):
         start_time = time.time()
-        path = os.path.join('processed', "match data",f"{self.img_name}.csv")
-        assert os.path.isfile(path), f"'{self.img_name}.csv' does not exist - did you run match first?"
-        noise_filtering.continuity_filter(self.file_name, self.img_name)
+        if manual:
+            path = os.path.join('processed', "manual data",f"{self.img_name}.csv")
+            assert os.path.isfile(path), f"'{self.img_name}.csv' does not exist - did you run manual first?"
+        else:
+            path = os.path.join('processed', "match data",f"{self.img_name}.csv")
+            assert os.path.isfile(path), f"'{self.img_name}.csv' does not exist - did you run match first?"
+        noise_filtering.continuity_filter(self.file_name, self.img_name, manual)
         if display_time:
             print(f"FILTER      | '{self.file_name}': {time.time()-start_time} s")
         end_procedure()

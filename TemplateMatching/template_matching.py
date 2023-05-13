@@ -7,7 +7,7 @@ import time
 
 from utils import Match, CONFIG
 
-def template_matching(FILE_NAME, IMG_NAME, mode, TEMPLATES):
+def template_matching(file_name, img_name, mode, templates):
     """ This function reads all jpg from the img folder and runs multi-template matching on it.
     The "coordinates" for teeth (top-left pixel of it) is outputted in a CSV file. Copies of the 
     images labelled with the suspected teeth are also generated for reference.
@@ -35,20 +35,20 @@ def template_matching(FILE_NAME, IMG_NAME, mode, TEMPLATES):
 
 
     teeth = []
-    for template in TEMPLATES:
+    for template in templates:
         # load template
         if mode == Match.TWO_D:
             t = cv2.imread(os.path.join("template", template),cv2.IMREAD_GRAYSCALE)
-            if os.path.isfile(os.path.join("processed", "projection", FILE_NAME)):
-                img = cv2.imread(os.path.join("img", FILE_NAME), cv2.IMREAD_GRAYSCALE)
+            if os.path.isfile(os.path.join("img", file_name)):
+                img = cv2.imread(os.path.join("img", file_name), cv2.IMREAD_GRAYSCALE)
             else: 
-                raise RuntimeError(f"{FILE_NAME} was not found in /img.")
+                raise RuntimeError(f"{file_name} was not found in /img.")
         else: 
             t = cv2.imread(os.path.join("template 1D", template),cv2.IMREAD_GRAYSCALE)
-            if os.path.isfile(os.path.join("processed", "projection", FILE_NAME)):
-                img = cv2.imread(os.path.join("processed", "projection", FILE_NAME), cv2.IMREAD_GRAYSCALE)
+            if os.path.isfile(os.path.join("processed", "projection", file_name)):
+                img = cv2.imread(os.path.join("processed", "projection", file_name), cv2.IMREAD_GRAYSCALE)
             else: 
-                raise RuntimeError(f"{FILE_NAME} was not found in /processed/projection. Possibly a Hyperbola was not interpolated, or did you run fit_project first? ")
+                raise RuntimeError(f"{file_name} was not found in /processed/projection. Possibly a Hyperbola was not interpolated, or did you run fit_project first? ")
 
         # load images and dimensions 
         h, w = t.shape
@@ -79,9 +79,9 @@ def template_matching(FILE_NAME, IMG_NAME, mode, TEMPLATES):
 
     data = {'x':[],'y':[], 'w':[],'h':[], 'score':[], 'match':[]}
     if mode == Match.ONE_D:
-        img = cv2.imread(os.path.join("processed", "projection", FILE_NAME), cv2.IMREAD_GRAYSCALE)
+        img = cv2.imread(os.path.join("processed", "projection", file_name), cv2.IMREAD_GRAYSCALE)
     else:
-        img = cv2.imread(os.path.join("img", FILE_NAME), cv2.IMREAD_GRAYSCALE)
+        img = cv2.imread(os.path.join("img", file_name), cv2.IMREAD_GRAYSCALE)
 
     for pt in teeth:
         cv2.rectangle(img, (pt[0], pt[1]), (pt[0] + pt[2], pt[1] + pt[3]), (255,255,0), 2)
@@ -102,12 +102,12 @@ def template_matching(FILE_NAME, IMG_NAME, mode, TEMPLATES):
         os.chdir(os.path.join(processed_dir,"match data 1D"))
     else:
         os.chdir(os.path.join(processed_dir,"match data"))
-    df.to_csv(f"{IMG_NAME}.csv")
+    df.to_csv(f"{img_name}.csv")
     if mode == Match.ONE_D:
         os.chdir(os.path.join(processed_dir,"match visualization 1D"))
     else:
         os.chdir(os.path.join(processed_dir,"match visualization"))
-    cv2.imwrite(FILE_NAME, img)
+    cv2.imwrite(file_name, img)
     os.chdir(current_dir)
 
 
