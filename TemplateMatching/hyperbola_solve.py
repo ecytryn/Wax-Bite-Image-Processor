@@ -40,6 +40,7 @@ def solve(file_name, img_name, img_height):
     matrix_t = [x**2, x*y, y**2, x, y]
     matrix = np.transpose(matrix_t)
     solved = np.matmul(np.linalg.inv(np.matmul(matrix_t, matrix)),np.matmul(matrix_t, np.ones(np.shape(matrix)[0])))
+
     (A,B,C,D,E) = solved
     
     error = False
@@ -71,12 +72,16 @@ def solve(file_name, img_name, img_height):
     projected_img = []
     normals_x = []
     normals_y = []
+    tangents_x =[]
+    tangents_y = []
 
     for i in range(len(fit[0])):
         projection = project_1D.project_one(fit[0][i], fit[1][i], solved)
         temp = []
         normals_x.append(projection[2][0])
         normals_y.append(projection[2][1])
+        tangents_x.append(projection[3][0])
+        tangents_y.append(projection[3][1])
         for j in range(len(projection[0])):
             try:
                 pixel = img[projection[1][j],projection[0][j]]
@@ -92,6 +97,8 @@ def solve(file_name, img_name, img_height):
     df_project_data["arclength loc"] = range(len(fit[0]))
     df_project_data["x_2D"] = fit[0]
     df_project_data["y_2D"] = fit[1]
+    df_project_data["tangent_x"] = tangents_x
+    df_project_data["tangent_y"] = tangents_y
     df_project_data["normal_x"] = normals_x
     df_project_data["normal_y"] = normals_y
 
