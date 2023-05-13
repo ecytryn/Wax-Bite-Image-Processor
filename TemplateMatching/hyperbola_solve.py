@@ -10,18 +10,20 @@ from scipy.optimize import fsolve
 
 '''
 This file contains:
-
 1. Solve 
 2. Equidistant Set
 3. Func
 4. Plot Hyperbola Linear
 '''
 
-def solve(FILE_NAME, IMG_NAME, IMG_HEIGHT, FILTER, WINDOW_WIDTH: int = 0):
+def solve(FILE_NAME, IMG_NAME, IMG_HEIGHT, FILTER = None, WINDOW_WIDTH: int = 0):
 
     current_dir = os.getcwd()
     os.chdir(os.path.join(current_dir,'processed', "filter data"))
-    df = pd.read_csv(f"{IMG_NAME}_{FILTER}.csv")
+    if FILTER:
+        df = pd.read_csv(f"{IMG_NAME}_{FILTER}.csv")
+    else:
+        df = pd.read_csv(f"{IMG_NAME}.csv")
     os.chdir(current_dir)
 
     x = df["x"].to_numpy()
@@ -94,7 +96,8 @@ def solve(FILE_NAME, IMG_NAME, IMG_HEIGHT, FILTER, WINDOW_WIDTH: int = 0):
     cv2.imwrite(FILE_NAME, projected_img_t)
     os.chdir(current_dir)
 
-    analyze_projection.avg_intesity(projected_img, WINDOW_WIDTH, FILE_NAME)
+    # intensity analysis; uncomment to perform
+    # analyze_projection.avg_intensity(projected_img, WINDOW_WIDTH, FILE_NAME)
 
     target = os.path.join(current_dir,"processed", "projection sampling")
     os.chdir(target)

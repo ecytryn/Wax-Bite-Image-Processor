@@ -2,21 +2,17 @@ import cv2
 import os
 import pandas as pd
 import numpy as np
-from dataclass import Tooth
 from pynput.keyboard import Key, Controller
-from dataclass import Match
+from utils import Tooth, Match, PARAMS
 
 
 # I think it's BGR for some reason, not RGB
-GAP_YELLOW=(0,255,255)
-TOOTH_RED=(0,0,255)
-CENTER_CYAN = (255,255,0)
 GREY = (100,100,100)
 REC_THICKNESS = 2
 SQUARE = 30
 STORE_MODE = Tooth.TOOTH
 MODE = Tooth.TOOTH
-MODES = [Tooth.TOOTH, Tooth.GAP, Tooth.CENTER_T, Tooth.CENTER_G]
+MODES = [mode for mode in Match]
 
 
 x = np.array([])
@@ -65,13 +61,13 @@ def GUI(FILE_NAME, NAME, mode):
 
         # border_img = cv2.copyMakeBorder(clone, 1000, 1000, 0, 0, cv2.BORDER_CONSTANT, value=GREY)
         if MODE == Tooth.TOOTH:
-            text_img = cv2.putText(clone, "mode: tooth", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, TOOTH_RED, 2)
+            text_img = cv2.putText(clone, "mode: tooth", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, PARAMS.TOOTH, 2)
         elif MODE == Tooth.GAP: 
-            text_img = cv2.putText(clone, "mode: gap", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, GAP_YELLOW, 2)
+            text_img = cv2.putText(clone, "mode: gap", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, PARAMS.GAP, 2)
         elif MODE == Tooth.CENTER_T: 
-            text_img = cv2.putText(clone, "mode: center tooth", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, CENTER_CYAN, 2)
+            text_img = cv2.putText(clone, "mode: center tooth", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, PARAMS.CENTER, 2)
         elif MODE == Tooth.CENTER_G:
-            text_img = cv2.putText(clone, "mode: center gap", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, CENTER_CYAN, 2)
+            text_img = cv2.putText(clone, "mode: center gap", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, PARAMS.CENTER, 2)
         else:
             text_img = cv2.putText(clone, "mode: viewing", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, GREY, 2)
 
@@ -117,13 +113,13 @@ def draw_tooth(image, x, y, w, h, mode):
     label = "0"
 
     if mode == Tooth.TOOTH:
-        color = TOOTH_RED
+        color = PARAMS.TOOTH
     elif mode == Tooth.GAP:
-        color = GAP_YELLOW
+        color = PARAMS.TOOTH
     elif mode == Tooth.CENTER_T :
-        color = CENTER_CYAN
+        color = PARAMS.CENTER
     elif mode == Tooth.CENTER_G:
-        color = CENTER_CYAN
+        color = PARAMS.CENTER
 
     
     if mode == Tooth.CENTER_G:

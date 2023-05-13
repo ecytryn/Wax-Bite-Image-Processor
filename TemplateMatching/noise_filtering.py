@@ -2,6 +2,7 @@ import os
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+from utils import PARAMS
 
 
 def continuity_filter(FILE_NAME, NAME, gradthreshold: float = 5, gradeventhreshold: float = 50,
@@ -10,9 +11,6 @@ def continuity_filter(FILE_NAME, NAME, gradthreshold: float = 5, gradeventhresho
     GRAD_EVEN_THRESHOLD = gradeventhreshold
     SMOOTH_THRESHOLD = smooththreshold
     SMOOTH_EVEN_THRESHOLD = smootheventhreshold
-
-    WIDTH_SIZE = 15
-    HEIGHT_SIZE = 7
 
     current_dir = os.getcwd()
     os.chdir(os.path.join(current_dir,'processed', "match data"))
@@ -31,8 +29,8 @@ def continuity_filter(FILE_NAME, NAME, gradthreshold: float = 5, gradeventhresho
     df_filter['smoothness_even'] = np.gradient(df_filter['gradient'])
 
     fig, ((ax1, ax2, ax3, ax4),(ax5, ax6, ax7, ax8), (ax9, ax10, ax11, ax12)) = plt.subplots(3, 4)
-    fig.set_figwidth(WIDTH_SIZE)
-    fig.set_figheight(HEIGHT_SIZE)
+    fig.set_figwidth(PARAMS.WIDTH_SIZE)
+    fig.set_figheight(PARAMS.HEIGHT_SIZE)
     fig.suptitle('Noise Filtering', fontweight='bold', fontname='Times New Roman')
     ax1.plot(x,y,'.-b')
     ax1.set_title("Original", fontsize=10, fontweight="bold", fontname='Times New Roman')

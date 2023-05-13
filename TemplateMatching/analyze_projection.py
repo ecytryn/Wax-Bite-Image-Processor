@@ -3,18 +3,14 @@ import matplotlib.pyplot as plt
 import os
 import cv2
 from scipy.signal import find_peaks
+from utils import PARAMS
 
-def avg_intesity(data, WINDOW_WIDTH, FILE_NAME):
-    """
-    
-    """
-    WIDTH_SIZE = 15
-    HEIGHT_SIZE = 7
+def avg_intensity(data, WINDOW_WIDTH, FILE_NAME):
     current_dir = os.getcwd()
     fig2, ax2 = plt.subplots()
 
-    fig2.set_figwidth(WIDTH_SIZE)
-    fig2.set_figheight(HEIGHT_SIZE)
+    fig2.set_figwidth(PARAMS.WIDTH_SIZE)
+    fig2.set_figheight(PARAMS.HEIGHT_SIZE)
     fig2.tight_layout()
 
     avg_intensity = np.mean(data, axis=1)
