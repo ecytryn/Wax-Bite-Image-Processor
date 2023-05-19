@@ -5,7 +5,7 @@ import cv2
 from scipy.signal import find_peaks
 from utils import CONFIG
 
-def avgIntensity(fileName, data):
+def avgIntensity(imgName, fileType, data):
     currDir = os.getcwd()
     fig2, ax2 = plt.subplots()
 
@@ -28,9 +28,9 @@ def avgIntensity(fileName, data):
     
     avgIntensityGraph = [255-i[0] for i in avgWindowIntensity]
     
-    target = os.path.join(currDir,"processed", "projection")
+    target = os.path.join(currDir,"processed", "projection", imgName)
     os.chdir(target)
-    projection = cv2.imread(fileName)
+    projection = cv2.imread(f"projection.{fileType}")
     os.chdir(currDir)
 
     ax2.imshow(projection)
@@ -39,7 +39,5 @@ def avgIntensity(fileName, data):
     ax2.scatter(localMaxIndex,np.ones(len(localMaxIndex)), color='r')
 
 
-    target = os.path.join(currDir,"processed", "projection graphed")
-    os.chdir(target)
-    fig2.savefig(fileName)
+    fig2.savefig(f"projection intensity.{fileType}")
     os.chdir(currDir)

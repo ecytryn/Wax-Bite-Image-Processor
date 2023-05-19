@@ -21,26 +21,26 @@ type = np.array([])
 clone = 0
 
 
-def GUI(fileName, imgName, mode):
+def GUI(fileName, imgName, fileType, mode):
     global x, y, w, h, type, clone, MODE, STORE_MODE
 
     MODE = Tooth.TOOTH
     STORE_MODE = Tooth.TOOTH
 
     if mode == Match.ONE_D:
-        imgPath = os.path.join("processed", "projection", fileName)
-        manualDataPath = os.path.join("processed", "manual data 1D", f"{imgName}.csv")
+        imgPath = os.path.join("processed", "projection", imgName, f"projection.{fileType}")
+        manualDataPath = os.path.join("processed", "manual", imgName, "manual data 1D.csv")
         if os.path.isfile(manualDataPath):
             imgDataPath = manualDataPath
         else:
-            imgDataPath = os.path.join("processed", "match data 1D", f"{imgName}.csv")
+            imgDataPath = os.path.join("processed", "template matching", imgName, "template matching 1D.csv")
     else:
         imgPath = os.path.join("img", fileName)
-        manualDataPath = os.path.join("processed", "manual data", f"{imgName}.csv")
+        manualDataPath = os.path.join("processed", "manual", imgName, f"manual data.csv")
         if os.path.isfile(manualDataPath):
             imgDataPath = manualDataPath
         else:
-            imgDataPath = os.path.join("processed", "match data", f"{imgName}.csv") 
+            imgDataPath = os.path.join("processed", "template matching", imgName, f"template matching.csv") 
 
     if not os.path.isfile(imgPath):
         raise RuntimeError(f"{imgPath} does not exist. A hyperbola fit was likely not found or did you run fitProject first?")
@@ -203,13 +203,13 @@ def leftClick(event, clickedX, clickedY, flags, params):
         keyboard.press("a")
         keyboard.release("a")
 
-def save(fileName, imgName, mode, image, dfRes = None):
+def save(fileName, imgName, fileType, mode, image, dfRes = None):
     if mode == Match.ONE_D:  
-        PATH_IMG = os.path.join("processed", "manual visualization 1D", fileName)
-        PATH_DATA = os.path.join("processed", "manual data 1D", f"{imgName}.csv")
+        PATH_IMG = os.path.join("processed", "manual", imgName, f"manual 1D.{fileType}")
+        PATH_DATA = os.path.join("processed", "manual", imgName, f"manual data 1D.csv")
     else:
-        PATH_IMG = os.path.join("processed", "manual visualization", fileName)
-        PATH_DATA = os.path.join("processed", "manual data", f"{imgName}.csv")
+        PATH_IMG = os.path.join("processed", "manual", imgName, f"manual.{fileType}")
+        PATH_DATA = os.path.join("processed", "manual", imgName, f"manual data.csv")
     cv2.imwrite(PATH_IMG, image)
 
     if isinstance(dfRes, pd.DataFrame):
@@ -227,10 +227,10 @@ def save(fileName, imgName, mode, image, dfRes = None):
 
 
 
-def plotTeeth(fileName, imgName, mode, df):
+def plotTeeth(fileName, imgName, fileType, mode, df):
 
     if mode == Match.ONE_D:
-        imgPath = os.path.join("processed", "projection", fileName)
+        imgPath = os.path.join("processed", "projection", imgName, f"projection.{fileType}")
     else:
         imgPath = os.path.join("img", fileName)
 
@@ -250,10 +250,10 @@ def plotTeeth(fileName, imgName, mode, df):
             type = np.append(type, Tooth.CENTER_G)
 
     if not os.path.isfile(imgPath):
-        raise RuntimeError(f"{imgPath} does not exist. A hyperbola fit was likely not found or did you run fit_project first?")
+        raise RuntimeError(f"{imgPath} does not exist. A hyperbola fit was likely not found or did you run fitProject first?")
 
     image = cv2.imread(imgPath)
     for i in range(len(x)):
         image = drawTooth(image, int(x[i]-1/2*w[i]), int(y[i]-1/2*h[i]), w[i], h[i], type[i])
 
-    save(fileName, imgName, mode, image, df)
+    save(fileName, imgName, fileType, mode, image, df)

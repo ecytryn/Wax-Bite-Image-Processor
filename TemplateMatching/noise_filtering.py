@@ -5,17 +5,20 @@ import pandas as pd
 from utils import CONFIG, Filter
 
 
-def continuityFilter(fileName, imgName):
-
+def continuityFilter(imgName, fileType):
+    '''
+    
+    '''
+    
     currDir = os.getcwd()
-    if CONFIG.FILTER == Filter.MANUAL:
-        os.chdir(os.path.join(currDir,'processed', "manual data"))
-    else:
-        os.chdir(os.path.join(currDir,'processed', "match data"))
-    df = pd.read_csv(f"{imgName}.csv")
-    dfFilter = pd.DataFrame()
-    os.chdir(currDir)
 
+    # read appropriate data 
+    if CONFIG.FILTER == Filter.MANUAL:
+        df = pd.read_csv(os.path.join(currDir,'processed', "manual", imgName, f"manual data.csv"))
+    else:
+        df = pd.read_csv(os.path.join(currDir,'processed', "template matching", imgName, f"template matching.csv"))
+
+    dfFilter = pd.DataFrame()
     dfFilter['x'] = df['x']+df['w']/2
     dfFilter['y'] = df['y']+df['h']/2
 
@@ -96,19 +99,15 @@ def continuityFilter(fileName, imgName):
 
     fig.tight_layout()
 
-    # saves to coordinates saves marked image in appropriate folders
-    os.chdir(os.path.join(currDir,'processed', "filter visualization"))
-    plt.savefig(fileName)
+    # saving
+    os.chdir(os.path.join(currDir,'processed', "filter", imgName))
+    plt.savefig(f"analysis.{fileType}")
+    dfFilter.to_csv(f"raw.csv")
+    dfGrad.to_csv(f"grad filtered.csv")
+    dfGradEven.to_csv(f"grad even filtered.csv")
+    dfSmooth.to_csv(f"smooth filtered.csv")
+    dfSmoothEven.to_csv(f"smooth even filtered.csv")
     os.chdir(currDir)
-
-    os.chdir(os.path.join(currDir,'processed', "filter data"))
-    dfFilter.to_csv(f"{imgName}.csv")
-    dfGrad.to_csv(f"{imgName}Grad.csv")
-    dfGradEven.to_csv(f"{imgName}GradEven.csv")
-    dfSmooth.to_csv(f"{imgName}Smooth.csv")
-    dfSmoothEven.to_csv(f"{imgName}SmoothEven.csv")
-    os.chdir(currDir)        
-
 
 def graphFilter():
     pass

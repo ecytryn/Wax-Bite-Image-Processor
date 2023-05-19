@@ -20,19 +20,20 @@ class ImageProcessor:
     '''
     This class helps organize all the methods and data surrounding an image. 
     '''
-    def __init__(self, imgName: str):
+    def __init__(self, fileName: str):
         '''
         Initialization
         '''
-        self.fileType = suffix(imgName)
-        self.fileName = imgName
-        self.imgName = imgName.replace(self.fileType, "")
+        self.root = os.getcwd()
 
-        assert os.path.isfile(os.path.join(os.getcwd(),'img', self.fileName)), f"'{self.fileName}' does not exist"
-        
-        self.image = cv2.imread(os.path.join('img', imgName), cv2.IMREAD_GRAYSCALE)
-        self.width = self.image.shape[1]
+        self.fileType = suffix(fileName)
+        self.fileName = fileName
+        self.imgName = fileName.replace(self.fileType, "")
+
+        assert os.path.isfile(os.path.join(os.getcwd(),'img', self.fileName)), f"'{self.fileName}' does not exist in img"
+        self.image = cv2.imread(os.path.join('img', fileName), cv2.IMREAD_GRAYSCALE)
         self.height = self.image.shape[0]
+        self.width = self.image.shape[1]
 
 
     def match(self, displayTime: bool = False, mode = Match.TWO_D):
@@ -42,12 +43,18 @@ class ImageProcessor:
         if Match.TWO_D, matches "template" images to original image
         '''
         startTime = time.time()
+
+        targetPath = os.path.join(self.root, "processed", "template matching")
+        os.chdir(targetPath)
+        makeDir(self.imgName)
+        os.chdir(self.root)
+
         if mode == Match.TWO_D:
             templates = [file for file in os.listdir(os.path.join(os.getcwd(),"template")) if suffix(file) in CONFIG.FILE_TYPES]
         elif mode == Match.ONE_D:
             templates = [file for file in os.listdir(os.path.join(os.getcwd(),"template 1D")) if suffix(file) in CONFIG.FILE_TYPES]
         try:
-            template_matching.templateMatching(self.fileName, self.imgName, mode, templates)
+            template_matching.templateMatching(self.fileName, self.imgName, self.fileType, mode, templates)
         except RuntimeError as err:
             print(err)
         if displayTime and mode == Match.TWO_D:
@@ -64,13 +71,19 @@ class ImageProcessor:
         don't filter. Output result in "filter data" 
         '''
         startTime = time.time()
+
+        targetPath = os.path.join(self.root, "processed", "filter")
+        os.chdir(targetPath)
+        makeDir(self.imgName)
+        os.chdir(self.root)
+
         if CONFIG.FILTER == Filter.MANUAL:
-            path = os.path.join('processed', "manual data",f"{self.imgName}.csv")
-            assert os.path.isfile(path), f"'{self.imgName}.csv' does not exist - did you run manual first?"
+            path = os.path.join('processed', "manual", self.imgName,f"manual data.csv")
+            assert os.path.isfile(path), f"'manual data.csv' does not exist in /processed/manual/{self.imgName} - did you run manual first?"
         else:
-            path = os.path.join('processed', "match data",f"{self.imgName}.csv")
-            assert os.path.isfile(path), f"'{self.imgName}.csv' does not exist - did you run match first?"
-        noise_filtering.continuityFilter(self.fileName, self.imgName)
+            path = os.path.join('processed', "template matching", self.imgName,f"template matching.csv")
+            assert os.path.isfile(path), f"'template matching.csv' does not exist in /processed/template matching/{self.imgName} - did you run match first?"
+        noise_filtering.continuityFilter(self.imgName, self.fileType)
         if displayTime:
             print(f"FILTER      | '{self.fileName}': {time.time()-startTime} s")
         endProcedure()
@@ -80,13 +93,27 @@ class ImageProcessor:
         '''
         takes data from "filter data" and project. If CONFIG.FILTER == Filter.MANUAL, also project manual data. 
         '''
+
+        targetPath = os.path.join(self.root, "processed", "fit")
+        os.chdir(targetPath)
+        makeDir(self.imgName)
+        os.chdir(self.root)
+
+        targetPath = os.path.join(self.root, "processed", "projection")
+        os.chdir(targetPath)
+        makeDir(self.imgName)
+        os.chdir(self.root)
+
+        targetPath = os.path.join(self.root, "processed", "manual")
+        os.chdir(targetPath)
+        makeDir(self.imgName)
+        os.chdir(self.root)
+
         startTime = time.time()
-        path = os.path.join('processed', "filter data", f"{self.imgName}.csv")
-        imgPath = os.path.join('img', self.fileName)
-        assert os.path.isfile(path), f"'{self.imgName}.csv' does not exist - did you run filter first?"
-        assert os.path.isfile(imgPath), f"'{self.fileName}' does not exist - did you run filter first?"
+        path = os.path.join('processed', "filter", self.imgName, "raw.csv")
+        assert os.path.isfile(path), f"filtered files do not exist in /processed/filter/{self.imgName} - did you run filter first?"
         try:
-            hyperbola_solve.solve(self.fileName, self.imgName, self.height)
+            hyperbola_solve.solve(self.fileName, self.imgName, self.fileType, self.height)
         except RuntimeError as err:
             print(err)
 
@@ -102,6 +129,12 @@ class ImageProcessor:
         if Match.TWO_D, uses data from "manual data" if exists, else uses data from "match data"
         '''
         startTime = time.time()
+
+        targetPath = os.path.join(self.root, "processed", "manual")
+        os.chdir(targetPath)
+        makeDir(self.imgName)
+        os.chdir(self.root)
+
         try:
             GUI.GUI(self.fileName, self.imgName, mode)
         except RuntimeError as err:
@@ -155,8 +188,11 @@ makeDir("template")
 makeDir("template 1D")
 makeDir("processed")
 os.chdir(os.path.join(current,"processed"))
-for dir in CONFIG.DIRS_TO_MAKE:
-    makeDir(dir)
+makeDir("filter")
+makeDir("fit")
+makeDir("template matching")
+makeDir("projection")
+makeDir("manual")
 os.chdir(current)
 
 # suppresses warnings for a cleaner output (comment to unsuppress)

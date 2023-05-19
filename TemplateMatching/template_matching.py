@@ -3,12 +3,11 @@ import cv2
 from matplotlib import pyplot as plt
 import os
 import pandas as pd
-import time
 
 from utils import Match, CONFIG
 
-def templateMatching(fileName, imgName, mode, templates):
-    """ This function reads all jpg from the img folder and runs multi-template matching on it.
+def templateMatching(fileName, imgName, fileType, mode, templates):
+    """ This function reads all images from the img folder and runs template matching on it.
     The "coordinates" for teeth (top-left pixel of it) is outputted in a CSV file. Copies of the 
     images labelled with the suspected teeth are also generated for reference.
     
@@ -26,30 +25,33 @@ def templateMatching(fileName, imgName, mode, templates):
     https://docs.opencv.org/4.x/df/dfb/group__imgproc__object.html#gga3a7850640f1fe1f58fe91a2d7583695da5be00b45a4d99b5e42625b4400bfde65 (equations for each algorithm)
     """
 
+    # depending on template matching on original image or projected image, obtain thresholds
     if mode == Match.TWO_D:
         threshold = CONFIG.THRESHOLD
-        iouThreshold = CONFIG.iouThreshold
+        iouThreshold = CONFIG.IOU_THRESHOLD
     else:
         threshold = CONFIG.THRESHOLD_1D
         iouThreshold = CONFIG.IOU_THRESHOLD_1D
 
 
     teeth = []
+
+    # if matching on original image, and image exists 
+    if mode == Match.TWO_D and os.path.isfile(os.path.join("img", fileName)):
+        img = cv2.imread(os.path.join("img", fileName), cv2.IMREAD_GRAYSCALE)
+    # if matching on projection image, and projection image exists
+    elif mode == Match.ONE_D and os.path.isfile(os.path.join("processed", "projection", fileName)):
+        img = cv2.imread(os.path.join("processed", "projection", fileName), cv2.IMREAD_GRAYSCALE)
+    #otherwise (image doesn't exist))
+    else: 
+        raise RuntimeError(f"{fileName} was not found")
+    
     for template in templates:
         # load template
         if mode == Match.TWO_D:
             t = cv2.imread(os.path.join("template", template),cv2.IMREAD_GRAYSCALE)
-            if os.path.isfile(os.path.join("img", fileName)):
-                img = cv2.imread(os.path.join("img", fileName), cv2.IMREAD_GRAYSCALE)
-            else: 
-                raise RuntimeError(f"{fileName} was not found in /img.")
         else: 
             t = cv2.imread(os.path.join("template 1D", template),cv2.IMREAD_GRAYSCALE)
-            if os.path.isfile(os.path.join("processed", "projection", fileName)):
-                img = cv2.imread(os.path.join("processed", "projection", fileName), cv2.IMREAD_GRAYSCALE)
-            else: 
-                raise RuntimeError(f"{fileName} was not found in /processed/projection. Possibly a Hyperbola was not interpolated, or did you run fitProject first? ")
-
         # load images and dimensions 
         h, w = t.shape
 
@@ -58,13 +60,13 @@ def templateMatching(fileName, imgName, mode, templates):
             result = cv2.matchTemplate(img2, t, method)
 
             #returns locations where result is bigger than THRESHOLD
-            loc = np.where(result >= threshold)
+            filtered_matches = np.where(result >= threshold)
 
             # for each (x,y)
-            for pt in zip(*loc[::-1]):
+            for pt in zip(*filtered_matches[::-1]):
                 intersect = False
                 for tooth in teeth[::]:
-                    if intersectionOverUnion([pt[0], pt[1],w,h,result[pt[1]][pt[0]]], tooth) > iouThreshold:
+                    if intersectionOverUnion([pt[0],pt[1],w,h,result[pt[1]][pt[0]]], tooth) > iouThreshold:
                         # if a location that intersects has a better matching score, replace
                         if result[pt[1]][pt[0]] > tooth[4]:
                             teeth.remove(tooth)
@@ -77,37 +79,33 @@ def templateMatching(fileName, imgName, mode, templates):
                     teeth.append(newTooth)
         
 
-    data = {'x':[],'y':[], 'w':[],'h':[], 'score':[], 'match':[]}
-    if mode == Match.ONE_D:
-        img = cv2.imread(os.path.join("processed", "projection", fileName), cv2.IMREAD_GRAYSCALE)
-    else:
-        img = cv2.imread(os.path.join("img", fileName), cv2.IMREAD_GRAYSCALE)
+    csv_data = {'x':[],'y':[], 'w':[],'h':[], 'score':[], 'match':[]}
 
+    # for each identified tooth
     for pt in teeth:
         cv2.rectangle(img, (pt[0], pt[1]), (pt[0] + pt[2], pt[1] + pt[3]), (255,255,0), 2)
-        data['x'].append(pt[0])
-        data['y'].append(pt[1])
-        data['w'].append(pt[2])
-        data['h'].append(pt[3])
-        data['score'].append(pt[4])
-        data['match'].append(pt[5])
-    df = pd.DataFrame(data=data)
+        csv_data['x'].append(pt[0])
+        csv_data['y'].append(pt[1])
+        csv_data['w'].append(pt[2])
+        csv_data['h'].append(pt[3])
+        csv_data['score'].append(pt[4])
+        csv_data['match'].append(pt[5])
+    df = pd.DataFrame(data=csv_data)
     df.sort_values(by=['x'], inplace=True)
 
 
-    # saves to coordinates saves marked image in appropriate folders
+    # saving
     currDir = os.getcwd()
-    processedDir = os.path.join(currDir,"processed")
+
     if mode == Match.ONE_D:
-        os.chdir(os.path.join(processedDir,"match data 1D"))
+        os.chdir(os.path.join(currDir, "processed","template matching",imgName))
+        df.to_csv("template matching.csv")
+        cv2.imwrite(f"template matching.{fileType}", img)
     else:
-        os.chdir(os.path.join(processedDir,"match data"))
-    df.to_csv(f"{imgName}.csv")
-    if mode == Match.ONE_D:
-        os.chdir(os.path.join(processedDir,"match visualization 1D"))
-    else:
-        os.chdir(os.path.join(processedDir,"match visualization"))
-    cv2.imwrite(fileName, img)
+        os.chdir(os.path.join(currDir, "processed","template matching",imgName))
+        df.to_csv("template matching 1D.csv")
+        cv2.imwrite(f"template matching 1D.{fileType}", img)
+
     os.chdir(currDir)
 
 

@@ -23,21 +23,19 @@ This file contains:
 4. Plot Hyperbola Linear - returns a set of coordinates on the hyperbola equidistant in terms of x
 '''
 
-def solve(fileName, imgName, imgHeight):
+def solve(fileName, imgName, fileType, imgHeight):
 
     currDir = os.getcwd()
-    os.chdir(os.path.join(currDir,'processed', "filter data"))
     if CONFIG.FILTER == Filter.GRADIENT:
-        df = pd.read_csv(f"{imgName}Grad.csv")
+        df = pd.read_csv(os.path.join(currDir,'processed', "filter", imgName, "grad filtered.csv"))
     elif CONFIG.FILTER == Filter.GRADIENT_EVEN:
-        df = pd.read_csv(f"{imgName}Gradeven.csv")
+        df = pd.read_csv(os.path.join(currDir,'processed', "filter", imgName, "grad even filtered.csv"))
     elif CONFIG.FILTER == Filter.SMOOTH:
-        df = pd.read_csv(f"{imgName}Smooth.csv")
+        df = pd.read_csv(os.path.join(currDir,'processed', "filter", imgName, "smooth filtered.csv"))
     elif CONFIG.FILTER == Filter.SMOOTH_EVEN:
-        df = pd.read_csv(f"{imgName}Smootheven.csv")
+        df = pd.read_csv(os.path.join(currDir,'processed', "filter", imgName, "smooth even filtered.csv"))
     else:
-        df = pd.read_csv(f"{imgName}.csv")
-    os.chdir(currDir)
+        df = pd.read_csv(os.path.join(currDir,'processed', "filter", imgName, "raw.csv"))
 
     x = df["x"].to_numpy()
     y = df["y"].to_numpy()
@@ -66,13 +64,13 @@ def solve(fileName, imgName, imgHeight):
     ax.imshow(img, cmap=mpl.colormaps['gray'])
     ax.plot(fit[0], fit[1], '.-r', label="fit")
 
-    target = os.path.join(currDir,"processed", "fit visualization")
+    target = os.path.join(currDir,"processed", "fit")
     os.chdir(target)
-    fig.savefig(fileName)
+    fig.savefig(f"fit.{fileType}")
     os.chdir(currDir)
 
     if error:
-        raise RuntimeError(f"Unable to fit a Hyperbola or Parabola; Circle or Ellipse detected.\nSee {fileName[0:len(fileName)-4]}.jpg in /processed/fit visualization for more detail.\nA={A}, B={B}, C={C}, D={D}, E={E}")
+        raise RuntimeError(f"Unable to fit a Hyperbola or Parabola; Circle or Ellipse detected.\nSee 'fit.{fileType}' in /processed/fit/{imgName} for more detail.\nA={A}, B={B}, C={C}, D={D}, E={E}")
 
     projectedImg = []
     normalsX = []
@@ -106,21 +104,17 @@ def solve(fileName, imgName, imgHeight):
     dfProjData["normalX"] = normalsX
     dfProjData["normalY"] = normalsY
 
-    target = os.path.join(currDir,"processed", "projection data", f"{imgName}.csv")
-    dfProjData.to_csv(target)
 
-    target = os.path.join(currDir,"processed", "projection")
+    target = os.path.join(currDir,"processed", "projection", imgName)
     os.chdir(target)
+    dfProjData.to_csv(f"projection.csv")
     projectedImgT = cv2.transpose(np.array(projectedImg))
-    cv2.imwrite(fileName, projectedImgT)
-    os.chdir(currDir)
+    cv2.imwrite(f"projection.{fileType}", projectedImgT)
 
     # intensity analysis; uncomment to perform
-    # analyze_projection.avgIntensity(fileName, projectedImg)
+    analyze_projection.avgIntensity(imgName, fileType, projectedImg)
 
-    target = os.path.join(currDir,"processed", "projection sampling")
-    os.chdir(target)
-    fig.savefig(fileName)
+    fig.savefig(f"projection sampling.{fileType}")
     os.chdir(currDir)
 
 
@@ -142,7 +136,7 @@ def solve(fileName, imgName, imgHeight):
         teethDf["y"] = closestYs
         teethDf["w"] = side
         teethDf["h"] = side
-        dfManual = pd.read_csv(os.path.join("processed", "manual data", f"{imgName}.csv"))
+        dfManual = pd.read_csv(os.path.join("processed", "manual", imgName, f"manual data.csv"))
         centerInd = crossProdCenter(coeff, df)
 
         t = dfManual.index[dfManual["type"]=="Tooth.CENTER_T"].to_numpy()
@@ -160,7 +154,7 @@ def solve(fileName, imgName, imgHeight):
                     print(f"Alternative center index found: {centerInd}; please ensure the current center index is correct")
         teethDf["type"] = dfManual["type"]
         
-        GUI.plotTeeth(fileName, imgName, Match.ONE_D, teethDf)
+        GUI.plotTeeth(fileName, imgName, fileType, Match.ONE_D, teethDf)
 
 
 def equidistantSet(start, end, coeff):

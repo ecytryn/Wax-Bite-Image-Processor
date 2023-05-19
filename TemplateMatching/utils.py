@@ -88,7 +88,7 @@ class CONFIG:
     # how much "time" elapsed between each image
     TIME = 2
     # PATH to plot results from; this folder will be seen to contain the result data
-    PATH = os.path.join(os.getcwd(),"processed", "manual data 1D")
+    PATH = os.path.join(os.getcwd(),"processed", "manual")
 
     "OTHERS - STYLISTIC"
     #colors for manual editing; in format (G,B,R) not (R,G,B)!
@@ -102,11 +102,6 @@ class CONFIG:
     HEIGHT_SIZE: int = 7
 
     "OTHERS - INITIALIZATION"
-    # directories that will be created in /processed
-    DIRS_TO_MAKE = ['match visualization', 'match data', 'match visualization 1D', 'match data 1D',
-                'filter visualization', 'filter data', 'fit visualization',
-                'projection', 'projection sampling', 'projection graphed', 'projection data',
-                'manual data', 'manual visualization', 'manual data 1D', 'manual visualization 1D']
     # accepted filetypes for templates and images
     FILE_TYPES = [".jpg", ".png", ".jpeg"]
 
