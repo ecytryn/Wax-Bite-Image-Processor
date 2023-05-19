@@ -66,7 +66,6 @@ class ImageProcessor:
 
     def filter(self, displayTime: bool = False):
         '''
-
         Filter current image's data according to CONFIG.FILTER and thresholds. If it's Filter.Manual or Filter.None
         don't filter. Output result in "filter data" 
         '''
@@ -145,7 +144,7 @@ class ImageProcessor:
 
 
     @staticmethod
-    def plotManual(displayTime: bool = False):
+    def plotResult(displayTime: bool = False):
         '''
         plot the result from "manual data 1D"
         '''

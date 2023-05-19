@@ -17,7 +17,7 @@ def workflowOne(images):
     #     processImg = ImageProcessor(image)
     #     processImg.filter(True)
     #     processImg.fitProject(True)
-    # ImageProcessor.plotManual(True)
+    # ImageProcessor.plotResult(True)
 
 if __name__ == "__main__":
     images = [file for file in os.listdir(os.path.join(os.getcwd(),"img")) if suffix(file) in CONFIG.FILE_TYPES]
