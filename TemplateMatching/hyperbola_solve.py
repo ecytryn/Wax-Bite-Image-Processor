@@ -66,11 +66,11 @@ def solve(fileName, imgName, fileType, imgHeight):
 
     target = os.path.join(currDir,"processed", "fit", imgName)
     os.chdir(target)
-    fig.savefig(f"fit.{fileType}")
+    fig.savefig(f"fit{fileType}")
     os.chdir(currDir)
 
     if error:
-        raise RuntimeError(f"Unable to fit a Hyperbola or Parabola; Circle or Ellipse detected.\nSee 'fit.{fileType}' in /processed/fit/{imgName} for more detail.\nA={A}, B={B}, C={C}, D={D}, E={E}")
+        raise RuntimeError(f"Unable to fit a Hyperbola or Parabola; Circle or Ellipse detected.\nSee 'fit{fileType}' in /processed/fit/{imgName} for more detail.\nA={A}, B={B}, C={C}, D={D}, E={E}")
 
     projectedImg = []
     normalsX = []
@@ -109,12 +109,12 @@ def solve(fileName, imgName, fileType, imgHeight):
     os.chdir(target)
     dfProjData.to_csv(f"projection.csv")
     projectedImgT = cv2.transpose(np.array(projectedImg))
-    cv2.imwrite(f"projection.{fileType}", projectedImgT)
+    cv2.imwrite(f"projection{fileType}", projectedImgT)
 
     # intensity analysis; uncomment to perform
     analyze_projection.avgIntensity(imgName, fileType, projectedImg)
 
-    fig.savefig(f"projection sampling.{fileType}")
+    fig.savefig(f"projection sampling{fileType}")
     os.chdir(currDir)
 
 

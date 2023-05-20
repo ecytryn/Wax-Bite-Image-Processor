@@ -29,7 +29,7 @@ def avgIntensity(imgName, fileType, data):
     avgIntensityGraph = [255-i[0] for i in avgWindowIntensity]
 
     # assumes image is at current dir
-    projection = cv2.imread(f"projection.{fileType}")
+    projection = cv2.imread(f"projection{fileType}")
 
     ax2.imshow(projection)
     ax2.plot(range(len(avgIntensityGraph)),avgIntensityGraph, color='y')
@@ -37,5 +37,5 @@ def avgIntensity(imgName, fileType, data):
     ax2.scatter(localMaxIndex,np.ones(len(localMaxIndex)), color='r')
 
 
-    fig2.savefig(f"projection intensity.{fileType}")
+    fig2.savefig(f"projection intensity{fileType}")
     os.chdir(currDir)

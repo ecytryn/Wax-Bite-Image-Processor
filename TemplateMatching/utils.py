@@ -68,7 +68,6 @@ class CONFIG:
     WINDOW_WIDTH: int = 10
     #which filtering technique to choose. See class Filter for options. 
     FILTER: Filter = Filter.MANUAL
-    TRANSPOSE_MANUAL = True
     
     "CROSS PROD"
     # which cross product method to use

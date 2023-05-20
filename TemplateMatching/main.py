@@ -7,16 +7,16 @@ from utils import Match, CONFIG, suffix, printDivider
 
 def workflowOne(images):
     # remember to change FILTER to Filter.MANUAL in CONFIG
-    # for image in images:
-    #     processImg = ImageProcessor(image)
-    #     processImg.match(True, Match.TWO_D)
-    # for image in images:
-    #     processImg = ImageProcessor(image)
-    #     processImg.manual(True, Match.TWO_D)
-    # for image in images:
-    #     processImg = ImageProcessor(image)
-    #     processImg.filter(True)
-    #     processImg.fitProject(True)
+    for image in images:
+        processImg = ImageProcessor(image)
+        processImg.match(True, Match.TWO_D)
+    for image in images:
+        processImg = ImageProcessor(image)
+        processImg.manual(True, Match.TWO_D)
+    for image in images:
+        processImg = ImageProcessor(image)
+        processImg.filter(True)
+        processImg.fitProject(True)
     ImageProcessor.plotResult(True)
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ def GUI(fileName, imgName, fileType, mode):
     STORE_MODE = Tooth.TOOTH
 
     if mode == Match.ONE_D:
-        imgPath = os.path.join("processed", "projection", imgName, f"projection.{fileType}")
+        imgPath = os.path.join("processed", "projection", imgName, f"projection{fileType}")
         manualDataPath = os.path.join("processed", "manual", imgName, "manual data 1D.csv")
         if os.path.isfile(manualDataPath):
             imgDataPath = manualDataPath
@@ -205,10 +205,10 @@ def leftClick(event, clickedX, clickedY, flags, params):
 
 def save(fileName, imgName, fileType, mode, image, dfRes = None):
     if mode == Match.ONE_D:  
-        PATH_IMG = os.path.join("processed", "manual", imgName, f"manual 1D.{fileType}")
+        PATH_IMG = os.path.join("processed", "manual", imgName, f"manual 1D{fileType}")
         PATH_DATA = os.path.join("processed", "manual", imgName, f"manual data 1D.csv")
     else:
-        PATH_IMG = os.path.join("processed", "manual", imgName, f"manual.{fileType}")
+        PATH_IMG = os.path.join("processed", "manual", imgName, f"manual{fileType}")
         PATH_DATA = os.path.join("processed", "manual", imgName, f"manual data.csv")
     cv2.imwrite(PATH_IMG, image)
 
@@ -230,7 +230,7 @@ def save(fileName, imgName, fileType, mode, image, dfRes = None):
 def plotPreviousData(fileName, imgName, fileType, mode, df):
 
     if mode == Match.ONE_D:
-        imgPath = os.path.join("processed", "projection", imgName, f"projection.{fileType}")
+        imgPath = os.path.join("processed", "projection", imgName, f"projection{fileType}")
     else:
         imgPath = os.path.join("img", fileName)
 

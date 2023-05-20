@@ -13,7 +13,7 @@ import noise_filtering
 import hyperbola_solve
 import GUI
 import plot_result
-from utils import Match, CONFIG, Filter, makeDir, endProcedure
+from utils import Match, CONFIG, Filter, makeDir, suffix, endProcedure
 
 
 class ImageProcessor:

@@ -101,7 +101,7 @@ def continuityFilter(imgName, fileType):
 
     # saving
     os.chdir(os.path.join(currDir,'processed', "filter", imgName))
-    plt.savefig(f"analysis.{fileType}")
+    plt.savefig(f"analysis{fileType}")
     dfFilter.to_csv(f"raw.csv")
     dfGrad.to_csv(f"grad filtered.csv")
     dfGradEven.to_csv(f"grad even filtered.csv")
