@@ -103,7 +103,7 @@ def GUI(fileName, imgName, fileType, mode):
             modeIndex = (modeIndex + 1) % len(MODES)
             MODE = MODES[modeIndex]
         elif key == ord("s"):
-            save(fileName, imgName, mode, clone)
+            save(fileName, imgName, fileType, mode, clone)
             break
         elif key == ord("1"):
             MODE = Tooth.TOOTH
@@ -227,7 +227,7 @@ def save(fileName, imgName, fileType, mode, image, dfRes = None):
 
 
 
-def plotTeeth(fileName, imgName, fileType, mode, df):
+def plotPreviousData(fileName, imgName, fileType, mode, df):
 
     if mode == Match.ONE_D:
         imgPath = os.path.join("processed", "projection", imgName, f"projection.{fileType}")

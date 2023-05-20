@@ -103,7 +103,7 @@ def even():
     fig.savefig("res_even.png")
 
 
-def folder_search() -> list(str):
+def folder_search():
     '''
     return the list of csv within the "results" folder specified in CONFIG. 
     '''
@@ -112,9 +112,9 @@ def folder_search() -> list(str):
     csv = []
     
     for dir in allDir:
-        items = os.listdir()
+        items = os.listdir(dir)
         for item in items:
-            if os.path.splitext(item)[1] == ".csv":
+            if item.endswith("1D.csv"):
                 csv.append(os.path.join(dir, item))
     
     return sorted(csv)

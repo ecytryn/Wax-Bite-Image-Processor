@@ -64,7 +64,7 @@ def solve(fileName, imgName, fileType, imgHeight):
     ax.imshow(img, cmap=mpl.colormaps['gray'])
     ax.plot(fit[0], fit[1], '.-r', label="fit")
 
-    target = os.path.join(currDir,"processed", "fit")
+    target = os.path.join(currDir,"processed", "fit", imgName)
     os.chdir(target)
     fig.savefig(f"fit.{fileType}")
     os.chdir(currDir)
@@ -148,13 +148,13 @@ def solve(fileName, imgName, fileType, imgHeight):
                 dfManual["type"][centerInd] = "Tooth.CENTER_T"
             elif dfManual["type"][centerInd] == "Tooth.GAP":
                 dfManual["type"][centerInd] = "Tooth.CENTER_G"
-            dfManual.to_csv(os.path.join("processed", "manual data", f"{imgName}.csv"))
+            dfManual.to_csv(os.path.join("processed", "manual", imgName, f"manual data.csv"))
         else:
             if len(t) > 0 and centerInd != t[0] or len(g) > 0 and centerInd != g[0]:
                     print(f"Alternative center index found: {centerInd}; please ensure the current center index is correct")
         teethDf["type"] = dfManual["type"]
         
-        GUI.plotTeeth(fileName, imgName, fileType, Match.ONE_D, teethDf)
+        GUI.plotPreviousData(fileName, imgName, fileType, Match.ONE_D, teethDf)
 
 
 def equidistantSet(start, end, coeff):

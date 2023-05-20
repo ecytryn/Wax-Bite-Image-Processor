@@ -99,12 +99,12 @@ def templateMatching(fileName, imgName, fileType, mode, templates):
 
     if mode == Match.ONE_D:
         os.chdir(os.path.join(currDir, "processed","template matching",imgName))
-        df.to_csv("template matching.csv")
-        cv2.imwrite(f"template matching.{fileType}", img)
-    else:
-        os.chdir(os.path.join(currDir, "processed","template matching",imgName))
         df.to_csv("template matching 1D.csv")
         cv2.imwrite(f"template matching 1D.{fileType}", img)
+    else:
+        os.chdir(os.path.join(currDir, "processed","template matching",imgName))
+        df.to_csv("template matching.csv")
+        cv2.imwrite(f"template matching.{fileType}", img)
 
     os.chdir(currDir)
 

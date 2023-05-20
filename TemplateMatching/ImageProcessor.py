@@ -13,7 +13,7 @@ import noise_filtering
 import hyperbola_solve
 import GUI
 import plot_result
-from utils import Match, CONFIG, Filter, makeDir, suffix, endProcedure
+from utils import Match, CONFIG, Filter, makeDir, endProcedure
 
 
 class ImageProcessor:
@@ -26,7 +26,7 @@ class ImageProcessor:
         '''
         self.root = os.getcwd()
 
-        self.fileType = suffix(fileName)
+        self.fileType = os.path.splitext(fileName)[1]
         self.fileName = fileName
         self.imgName = fileName.replace(self.fileType, "")
 
@@ -135,7 +135,7 @@ class ImageProcessor:
         os.chdir(self.root)
 
         try:
-            GUI.GUI(self.fileName, self.imgName, mode)
+            GUI.GUI(self.fileName, self.imgName, self.fileType, mode)
         except RuntimeError as err:
             print(err)
         if displayTime:
@@ -165,21 +165,11 @@ class ImageProcessor:
 --template (templates for matching on images in original form)
 --template 1D (templates for matching on images in strip form)
 --processed (folder where results are stored)
-     -- match visualization (template matching result overlapped on original image)
-     -- match data (result data of template matching)
-     -- match visualization 1D (1D template matching result overlapped on projected image)
-     -- match data 1D (result data of 1D template matching)
-     -- filter visualization (visualization of the 4 filtering techniques)
-     -- filter data (result data after filtering)
-     -- fit visualization (fit conic overlapped on original image)
-     -- projection (projection result visualization)
-     -- projection sampling (visualization of the sampling done by projection)
-     -- projection graphed (intensity analysis visualization of projection)
-     -- projection data (data of projected points along conic and orthogonal vectors)
-     -- manual visualization (manual editing result overlapped on original image)
-     -- manual data (data of manual editing result)
-     -- manual visualization 1D (1D manual editing result overlapped on 1D image)
-     -- manual data 1D (data of 1D manual editing result)
+     -- match 
+     -- filter 
+     -- fit 
+     -- projection 
+     -- manual 
 '''
 current = os.getcwd()
 makeDir("img")

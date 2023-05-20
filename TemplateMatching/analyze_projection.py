@@ -27,11 +27,9 @@ def avgIntensity(imgName, fileType, data):
         avgWindowIntensity.append(np.mean(avgIntensity[start:end], axis=0))
     
     avgIntensityGraph = [255-i[0] for i in avgWindowIntensity]
-    
-    target = os.path.join(currDir,"processed", "projection", imgName)
-    os.chdir(target)
+
+    # assumes image is at current dir
     projection = cv2.imread(f"projection.{fileType}")
-    os.chdir(currDir)
 
     ax2.imshow(projection)
     ax2.plot(range(len(avgIntensityGraph)),avgIntensityGraph, color='y')
