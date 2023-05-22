@@ -10,14 +10,14 @@ def workflowOne(images):
     # for image in images:
     #     processImg = ImageProcessor(image)
     #     processImg.match(True, Match.TWO_D)
-    for image in images:
+    for image in images[0:1]:
         processImg = ImageProcessor(image)
         processImg.manual(True, Match.TWO_D)
-    for image in images:
-        processImg = ImageProcessor(image)
-        processImg.filter(True)
-        processImg.fitProject(True)
-    ImageProcessor.plotResult(True)
+    # for image in images:
+    #     processImg = ImageProcessor(image)
+    #     processImg.filter(True)
+    #     processImg.fitProject(True)
+    # ImageProcessor.plotResult(True)
 
 if __name__ == "__main__":
     images = [file for file in os.listdir(os.path.join(os.getcwd(),"img")) if suffix(file) in CONFIG.FILE_TYPES]
