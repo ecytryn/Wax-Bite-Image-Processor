@@ -151,9 +151,9 @@ def solve(file_name: str, img_name: str, file_type: str, img_height: int):
         # find and mark potential errors
         potential_errors = analyze_projection.arclength_histogram(img_name, file_type, closest_proj_indecies)
         for e in potential_errors:
-            if df_manual["type"][e] == "Tooth.TOOTH" or df_manual["type"][e] == "Tooth.CENTER_T":
+            if df_manual["type"][e] == "Tooth.TOOTH":
                 df_manual["type"][e] = "Tooth.ERROR_T"
-            elif df_manual["type"][e] == "Tooth.GAP" or df_manual["type"][e] == "Tooth.CENTER_G":
+            elif df_manual["type"][e] == "Tooth.GAP":
                 df_manual["type"][e] = "Tooth.ERROR_G"
 
         # save and re-plot altered data

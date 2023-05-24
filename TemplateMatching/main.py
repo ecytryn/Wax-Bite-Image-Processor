@@ -18,7 +18,7 @@ def workflowOne(images):
 def match(images):
     for image in images:
         processImg = ImageProcessor(image)
-        processImg.match(True, Match.TWO_D)
+        processImg.template_matching(True, Match.TWO_D)
 
 def manual(images):
     for image in images:
@@ -59,13 +59,13 @@ if __name__ == "__main__":
     manual_bool = False
     fitproj_bool = False
     format_bool = False
-    if "match" in args or "all" in args:
+    if "match" in args:
         match_bool = True
-    if "manual" in args or "all" in args:
+    if "manual" in args:
         manual_bool = True
-    if "fitproj" in args or "all" in args:
+    if "fitproj" in args:
         fitproj_bool = True
-    if "format" in args or "all" in args:
+    if "format" in args:
         format_bool = True
     
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     else:
         print(f"Processing all images")
 
-    if all([match_bool, manual_bool, fitproj_bool, format_bool]):
+    if not any([match_bool, manual_bool, fitproj_bool, format_bool]):
         print("Running: all")
         workflowOne(images)
     else:
