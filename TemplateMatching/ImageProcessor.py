@@ -17,50 +17,91 @@ from utils import Match, CONFIG, Filter, make_dir, suffix, end_procedure
 
 
 class ImageProcessor:
-    '''
-    This class helps organize all the methods and data surrounding an image. 
-    '''
-    def __init__(self, file_name: str):
-        '''
-        Initialization
-        '''
-        self.root = os.getcwd()
+    """
+    An ImageProcessor contains all functionalies of processing a wax print. 
 
+    It's assumed that images are in "img"
+
+    Properties
+    ----------
+    root_dir: root directory of program 
+    file_type: image file-extension 
+    file_name: name of image file with file-extension
+    img_name: name of image file without file-extension
+    image: actual image data
+    height: height of image (pixels)
+    width: width of image (pixels)
+    """
+
+    _PATH_ROOT = os.getcwd()
+    _PATH_IMG = os.path.join(_PATH_ROOT, "img")
+    _PATH_TEMPLATE = os.path.join(_PATH_ROOT, "template")
+    _PATH_TEMPLATE_1D = os.path.join(_PATH_ROOT, "template 1D")
+
+    def __init__(self, file_name: str) -> None:
+        """
+        Constructor for Image Processor
+
+        Params
+        ------
+        file_name: name of image file
+        """
         self.file_type = os.path.splitext(file_name)[1]
         self.file_name = file_name
         self.img_name = file_name.replace(self.file_type, "")
 
-        assert os.path.isfile(os.path.join(os.getcwd(),'img', self.file_name)), f"'{self.file_name}' does not exist in img"
+        # PATHS
+        self._PATH_MATCHING = os.path.join(self._PATH_ROOT, "processed", "template matching", self.img_name)
+        self._PATH_MANUAL = os.path.join(self._PATH_ROOT, "processed", "manual", self.img_name)
+        self._PATH_FILTER = os.path.join(self._PATH_ROOT, "processed", "filter", self.img_name)
+        self._PATH_FIT = os.path.join(self._PATH_ROOT, "processed", "fit", self.img_name)
+        self._PATH_PROJECTION = os.path.join(self._PATH_ROOT, "processed", "projection", self.img_name)
+        self._PATH_OUTPUT = os.path.join(self._PATH_ROOT, "processed", "output", self.img_name)
+
+        make_dir(self._PATH_MATCHING)
+        make_dir(self._PATH_MANUAL)
+        make_dir(self._PATH_FILTER)
+        make_dir(self._PATH_FIT)
+        make_dir(self._PATH_PROJECTION)
+        make_dir(self._PATH_OUTPUT)
+
+
+        assert os.path.isfile(os.path.join(self._PATH_ROOT,'img', self.file_name)), f"'{self.file_name}' does not exist in img"
+
+        # image and image projection data 
         self.image = cv2.imread(os.path.join('img', file_name), cv2.IMREAD_GRAYSCALE)
+        self.image_proj = None
+
         self.height = self.image.shape[0]
         self.width = self.image.shape[1]
 
 
     def match(self, displayTime: bool = False, mode = Match.TWO_D):
-        '''
-        performs template matching
-        if Match.ONE_D, matches "template 1D" images to projected image
-        if Match.TWO_D, matches "template" images to original image
-        '''
+        """
+        Performs template matching and stores output in /processed/template matching. If 
+        mode = Match.ONE_D, matches "template 1D" images to projected image. If Match.TWO_D, 
+        matches "template" images to original image. 
+        """
         start_time = time.time()
-
-        target_path = os.path.join(self.root, "processed", "template matching")
-        os.chdir(target_path)
-        make_dir(self.img_name)
-        os.chdir(self.root)
-
-        if mode == Match.TWO_D:
-            templates = [file for file in os.listdir(os.path.join(os.getcwd(),"template")) if suffix(file) in CONFIG.FILE_TYPES]
-        elif mode == Match.ONE_D:
-            templates = [file for file in os.listdir(os.path.join(os.getcwd(),"template 1D")) if suffix(file) in CONFIG.FILE_TYPES]
-        try:
-            template_matching.templateMatching(self.file_name, self.img_name, self.file_type, mode, templates)
-        except RuntimeError as err:
-            print(err)
+        
+        # if we want to match the projected image but it's data is not loaded yet
+        if (mode == Match.ONE_D) and (self.image_proj is None):
+            try:
+                if os.path.isfile(os.path.join(self._PATH_PROJECTION, f"projection.{self.file_type}")):
+                    self.image_proj = os.path.join(self._PATH_PROJECTION, f"projection.{self.file_type}")
+                    template_matching.templateMatching(self, mode)
+                else:
+                    raise RuntimeError("projected image not found; have you ran fit project?")
+            except RuntimeError as err:
+                print(err)
+        else:
+            template_matching.templateMatching(self, mode)
+        
         if displayTime and mode == Match.TWO_D:
             print(f"MATCH       | '{self.file_name}: {time.time()-start_time} s")
         if displayTime and mode == Match.ONE_D:
             print(f"MATCH 1D    | '{self.file_name}': {time.time()-start_time} s")
+
         end_procedure()  
 
 
@@ -70,11 +111,6 @@ class ImageProcessor:
         don't filter. Output result in "filter data" 
         '''
         start_time = time.time()
-
-        target_path = os.path.join(self.root, "processed", "filter")
-        os.chdir(target_path)
-        make_dir(self.img_name)
-        os.chdir(self.root)
 
         if CONFIG.FILTER == Filter.MANUAL:
             path = os.path.join('processed', "manual", self.img_name,f"manual data.csv")
@@ -92,21 +128,6 @@ class ImageProcessor:
         '''
         takes data from "filter data" and project. If CONFIG.FILTER == Filter.MANUAL, also project manual data. 
         '''
-
-        target_path = os.path.join(self.root, "processed", "fit")
-        os.chdir(target_path)
-        make_dir(self.img_name)
-        os.chdir(self.root)
-
-        target_path = os.path.join(self.root, "processed", "projection")
-        os.chdir(target_path)
-        make_dir(self.img_name)
-        os.chdir(self.root)
-
-        target_path = os.path.join(self.root, "processed", "manual")
-        os.chdir(target_path)
-        make_dir(self.img_name)
-        os.chdir(self.root)
 
         start_time = time.time()
         path = os.path.join('processed', "filter", self.img_name, "raw.csv")
@@ -128,11 +149,6 @@ class ImageProcessor:
         if Match.TWO_D, uses data from "manual data" if exists, else uses data from "match data"
         '''
         start_time = time.time()
-
-        target_path = os.path.join(self.root, "processed", "manual")
-        os.chdir(target_path)
-        make_dir(self.img_name)
-        os.chdir(self.root)
 
         try:
             GUI.GUI(self.file_name, self.img_name, self.file_type, mode)

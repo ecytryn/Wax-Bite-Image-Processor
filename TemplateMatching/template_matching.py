@@ -4,86 +4,75 @@ from matplotlib import pyplot as plt
 import os
 import pandas as pd
 
-from utils import Match, CONFIG
+from utils import Match, CONFIG, suffix
 
-def templateMatching(fileName, imgName, fileType, mode, templates):
-    """ This function reads all images from the img folder and runs template matching on it.
-    The "coordinates" for teeth (top-left pixel of it) is outputted in a CSV file. Copies of the 
-    images labelled with the suspected teeth are also generated for reference.
+def templateMatching(self, mode: Match) -> None:
+    """Performs template matching on an ImageProcessor object with templates in "template". 
+    Saves numerical and visual results to /processed/template matching 
     
-    Note:
-    1. This function detects objects similar in size to the list of templates provided. It does not scale the template
-    so make sure that the target object is similar in size to how it appears in the image
-    2. Possible algorithms for template matching: [cv2.TM_CCOEFF, cv2.TM_CCOEFF_NORMED, cv2.TM_CCORR, 
-    cv2.TM_CCORR_NORMED, cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]. The current code is taylored 
-    to cv2.TM_CCOEFF_NORMED
-    3. The folder structure assumed is an img and template folder in the same directory,
-    where the img folder has all the images, and template folder all the templates
+    Params
+    ------
+    self: ImageProcessor object
+    mode: one of Match.TWO_D or Match_ONE_D depending on which to match
 
+    Notes
+    -----
     Useful Links:
     https://docs.opencv.org/4.x/d4/dc6/tutorial_py_templateMatching.html (a tutorial for template matching)
     https://docs.opencv.org/4.x/df/dfb/group__imgproc__object.html#gga3a7850640f1fe1f58fe91a2d7583695da5be00b45a4d99b5e42625b4400bfde65 (equations for each algorithm)
     """
 
-    # depending on template matching on original image or projected image, obtain thresholds
+    # set config thresholds, image data, template path
     if mode == Match.TWO_D:
         threshold = CONFIG.THRESHOLD
         iouThreshold = CONFIG.IOU_THRESHOLD
-    else:
+        templates = [file for file in os.listdir(self._PATH_TEMPLATE) if suffix(file) in CONFIG.FILE_TYPES]
+        img = self.image
+        template_path = self._PATH_TEMPLATE
+    elif mode == Match.ONE_D:
         threshold = CONFIG.THRESHOLD_1D
         iouThreshold = CONFIG.IOU_THRESHOLD_1D
-
+        templates = [file for file in os.listdir(self._PATH_TEMPLATE_1D) if suffix(file) in CONFIG.FILE_TYPES]
+        img = self.image_proj
+        template_path = self._PATH_TEMPLATE_1D
 
     teeth = []
-
-    # if matching on original image, and image exists 
-    if mode == Match.TWO_D and os.path.isfile(os.path.join("img", fileName)):
-        img = cv2.imread(os.path.join("img", fileName), cv2.IMREAD_GRAYSCALE)
-    # if matching on projection image, and projection image exists
-    elif mode == Match.ONE_D and os.path.isfile(os.path.join("processed", "projection", fileName)):
-        img = cv2.imread(os.path.join("processed", "projection", fileName), cv2.IMREAD_GRAYSCALE)
-    #otherwise (image doesn't exist))
-    else: 
-        raise RuntimeError(f"{fileName} was not found")
-    
     for template in templates:
-        # load template
-        if mode == Match.TWO_D:
-            t = cv2.imread(os.path.join("template", template),cv2.IMREAD_GRAYSCALE)
-        else: 
-            t = cv2.imread(os.path.join("template 1D", template),cv2.IMREAD_GRAYSCALE)
-        # load images and dimensions 
-        h, w = t.shape
+        # load template and dimensions
+        t = cv2.imread(os.path.join(template_path, template),cv2.IMREAD_GRAYSCALE)
+        template_h, template_w = t.shape
 
         for method in CONFIG.METHODS:
-            img2 = img.copy()
-            result = cv2.matchTemplate(img2, t, method)
-
-            #returns locations where result is bigger than THRESHOLD
-            filtered_matches = np.where(result >= threshold)
+            img_clone = img.copy()
+            matching_score = cv2.matchTemplate(img_clone, t, method)
+            #returns locations where matching_score is bigger than THRESHOLD
+            filtered_matches = np.where(matching_score >= threshold)
 
             # for each (x,y)
             for pt in zip(*filtered_matches[::-1]):
                 intersect = False
                 for tooth in teeth[::]:
-                    if intersectionOverUnion([pt[0],pt[1],w,h,result[pt[1]][pt[0]]], tooth) > iouThreshold:
+                    if intersectionOverUnion([pt[0], pt[1], template_w, template_h,
+                                              matching_score[pt[1]][pt[0]]], tooth) > iouThreshold:
                         # if a location that intersects has a better matching score, replace
-                        if result[pt[1]][pt[0]] > tooth[4]:
+                        if matching_score[pt[1]][pt[0]] > tooth[4]:
                             teeth.remove(tooth)
                         else: 
                             intersect = True
                 
                 # if no intersection, add to list of teeth
                 if not intersect:
-                    newTooth = [pt[0], pt[1], w, h, result[pt[1]][pt[0]], template]
+                    newTooth = [pt[0], pt[1], template_w, template_h, matching_score[pt[1]][pt[0]], template]
                     teeth.append(newTooth)
         
 
     csv_data = {'x':[],'y':[], 'w':[],'h':[], 'score':[], 'match':[]}
 
-    # for each identified tooth
+    # for each identified tooth, draw a rectangle
+    matched_image = img.copy()
+
     for pt in teeth:
-        cv2.rectangle(img, (pt[0], pt[1]), (pt[0] + pt[2], pt[1] + pt[3]), (255,255,0), 2)
+        cv2.rectangle(matched_image, (pt[0], pt[1]), (pt[0] + pt[2], pt[1] + pt[3]), (255,255,0), 2)
         csv_data['x'].append(pt[0])
         csv_data['y'].append(pt[1])
         csv_data['w'].append(CONFIG.SQUARE)
@@ -93,37 +82,37 @@ def templateMatching(fileName, imgName, fileType, mode, templates):
     df = pd.DataFrame(data=csv_data)
     df.sort_values(by=['x'], inplace=True)
 
-
     # saving
-    curr_dir = os.getcwd()
-
-    if mode == Match.ONE_D:
-        os.chdir(os.path.join(curr_dir, "processed","template matching",imgName))
-        df.to_csv("template matching 1D.csv")
-        cv2.imwrite(f"template matching 1D{fileType}", img)
-    else:
-        os.chdir(os.path.join(curr_dir, "processed","template matching",imgName))
+    os.chdir(self._PATH_MATCHING)
+    if mode == Match.TWO_D:
         df.to_csv("template matching.csv")
-        cv2.imwrite(f"template matching{fileType}", img)
+        cv2.imwrite(f"template matching{self.file_type}", matched_image)
+    elif mode == Match.ONE_D:
+        df.to_csv("template matching 1D.csv")
+        cv2.imwrite(f"template matching 1D{self.file_type}", matched_image)
+    os.chdir(self._PATH_ROOT)
 
-    os.chdir(curr_dir)
 
 
-
-def intersectionOverUnion(p1, p2):
+def intersectionOverUnion(p1: list[int, int, int, int], p2: list[int, int, int, int]) -> float:
     """
-    outputs the intersection area size over the union area size of two boxes. p1 and p2 are the top left
-    coordinates of the boxes. 
+    returns the intersection area over the union area of two template matches (intersection
+    over union score)
+
+    Params
+    ------
+    p1: [x, y, w, h] (box 1)
+    p2: [x, y, w, h] (box 2)
     """
-    #calculation of overlap
-    xA = max(p1[0], p2[0])
-    yA = max(p1[1], p2[1])
-    xB = min(p1[0]+p1[2], p2[0]+p2[2])
-    yB = min(p1[1]+p1[3], p2[1]+p2[3])
-    interArea = max(0, xB - xA + 1) * max(0, yB - yA + 1)
-    box1Area = p1[2] * p1[3]
-    box2Area = p2[2] * p2[3]
+    #calculation of overlap; A = topleft corner, B = bottomright corner
+    x_top_left = max(p1[0], p2[0])
+    y_top_left = max(p1[1], p2[1])
+    x_bot_right = min(p1[0]+p1[2], p2[0]+p2[2])
+    y_bot_right = min(p1[1]+p1[3], p2[1]+p2[3])
+    inter_area = max(0, x_bot_right - x_top_left + 1) * max(0, y_bot_right - y_top_left + 1)
+    box1_area = p1[2] * p1[3]
+    box2_area = p2[2] * p2[3]
 
     # score of overlap
-    iou = interArea / float(box1Area + box2Area - interArea)
+    iou = inter_area / float(box1_area + box2_area - inter_area)
     return iou 
