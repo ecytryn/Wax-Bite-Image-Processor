@@ -321,8 +321,6 @@ class ImageProcessor:
                        fontname='Times New Roman')
         ax12.set_title(f"Filtered Even Smoothness: Threshold {CONFIG.SMOOTH_EVEN_THRESHOLD}", 
                        fontsize=10, fontweight="bold", fontname='Times New Roman')
-        ax2.legend(fontsize=10)
-        ax3.legend(fontsize=10)
         
         # plotting raw data (unfiltered)
         ax1.plot(x_raw, y_raw,'.-b')
@@ -330,6 +328,9 @@ class ImageProcessor:
         ax2.plot(x_raw, df_raw['gradient_even'],'.-g', label='gradient even')
         ax3.plot(x_raw, df_raw['smoothness'],'.-r', label='smoothness')
         ax3.plot(x_raw, df_raw['smoothness_even'],'.-g', label='smoothness even')
+
+        ax2.legend(fontsize=10)
+        ax3.legend(fontsize=10)
 
         # gradient filtering
         df_grad = self.filter_one(df_raw, CONFIG.GRAD_THRESHOLD, "gradient")
