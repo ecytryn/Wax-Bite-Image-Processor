@@ -3,13 +3,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime, timedelta
+import time
 
-from utils import CONFIG, parse_date
+from utils import CONFIG
+from helper import parse_date
 
 
 def format_result() -> None:
     """
-    Sorts all output file into the desired format. 
+    Format output files into the desired format. 
     """
 
     # finds path of all data files, sorted
@@ -80,6 +82,10 @@ def format_result() -> None:
 def plot_result() -> None:
     """
     Plot the formatted output data. 
+
+    Requires
+    --------
+    format_result be ran first
     """
 
     outputPath = os.path.join("processed", "output")
@@ -185,6 +191,11 @@ def plot_result() -> None:
     axFig.savefig(os.path.join(outputPath,"arclength plot.png"))
     binFig.savefig(os.path.join(outputPath,"index plot.png"))
 
+
+
+#---------------------------------------
+"HELPERS"
+#----------------------------------------
 
 def search_file(root: str, file_name: str) -> list[str]:
     """

@@ -10,23 +10,23 @@ class GUI:
     """
     An image editing interface to identify teeth, gaps, center teeth, center gaps of a teeth wax image. 
 
-    Usage: 
-    
-        MOUSE
-        =====
-        left-click: identify an item of the current mode (tooth, gap, center tooth, or center gap)
-        left-click(inside box): remove an item
+    Usage:
 
-        KEYBOARD
-        ========
-        tab: switch between modes in order
-        1: enter "tooth" mode
-        2: enter "gap" mode
-        3: enter "center tooth" mode
-        4. enter "center gap" mode
-        space: show or hide boxes
-        save: save data and exit
-        esc: exit without saving
+    MOUSE
+    -----
+    left-click: identify an item of the current mode (tooth, gap, center tooth, or center gap)
+    left-click(inside box): remove an item
+
+    KEYBOARD
+    --------
+    tab: switch between modes in order
+    1: enter "tooth" mode
+    2: enter "gap" mode
+    3: enter "center tooth" mode
+    4. enter "center gap" mode
+    space: show or hide boxes
+    save: save data and exit
+    esc: exit without saving
     """
 
     # tooth, gap, center tooth, center gap: 4 modes
@@ -48,11 +48,12 @@ class GUI:
                 2.1) if doesn't exist, read /processed/template matching/[img_name]/template matching.csv
                 2.2) if doesn't exist, use empty data set
 
-        Args:
-            file_name: image name with file extension
-            img_name: image name without file extension
-            file_type: image extensiom
-            mode: one of Match.ONE_D or Match.TWO_D 
+        Params
+        ------
+        file_name: image name with file extension
+        img_name: image name without file extension
+        file_type: image extensiom
+        mode: one of Match.ONE_D or Match.TWO_D 
         """
 
         self.x = np.array([])
@@ -135,7 +136,13 @@ class GUI:
 
             # draw data
             for i in range(dataset_size):
-                self.clone = GUI.draw_tooth(self.clone, self.x[i], self.y[i], self.w[i], self.h[i], self.type[i])
+                self.clone = GUI.draw_tooth(self.clone, 
+                                            self.x[i], 
+                                            self.y[i], 
+                                            self.w[i], 
+                                            self.h[i], 
+                                            self.type[i], 
+                                            self._curr_mode)
 
             # sets current mode and display image
             if self._curr_mode == Tooth.TOOTH:
@@ -204,20 +211,23 @@ class GUI:
 
     @staticmethod
     def draw_tooth(image: list[list[list[int]]], x: float, y: float, w: float, 
-                  h: float, type: Tooth) -> list[list[list[int]]]:
+                  h: float, type: Tooth, curr_mode: Tooth | None = None) -> list[list[list[int]]]:
         """
         Draws a type of element at a location on an image
 
-        Args:
-            image: image
-            x: x coordinate of top left location of data point
-            y: y coordinate of top left location of data point
-            w: width of data point
-            h: height of data point
-            type: one of Tooth.TOOTH, Tooth.GAP, Tooth.CENTER_T, Tooth.CENTER_G
+        Params
+        ------
+        image: image
+        x: x coordinate of top left location of data point
+        y: y coordinate of top left location of data point
+        w: width of data point
+        h: height of data point
+        type: one of Tooth.TOOTH, Tooth.GAP, Tooth.CENTER_T, Tooth.CENTER_G
+        curr_mode: if curr mode is Tooth.NO_BOX, don't draw box
 
-        Returns:
-            altered image
+        Returns
+        -------
+        altered image
         """
         # offset for T and G in center tooth box (added so it's centered)
         OFFSET_X = -5
@@ -248,7 +258,7 @@ class GUI:
         labelled_img = GUI._draw_center(image, center_x, center_y, color)
 
         # if no box, return 
-        if type == Tooth.NO_BOX:
+        if curr_mode == Tooth.NO_BOX:
             return labelled_img
         # draw box
         image_rec = GUI._draw_rectangle(labelled_img, x, y, end_x, end_y, color)
@@ -260,16 +270,18 @@ class GUI:
         """
         Draws a rectangle at a specified location on an image
 
-        Args:
-            image: image
-            x: x coordinate of top left location of rectangle
-            y: y coordinate of top left location of rectangle
-            end_x: x coordinate of bottom right location of rectangle
-            end_y: y coordinate of bottom right location of rectangle
-            color: color of rectangle
+        Params
+        ------
+        image: image
+        x: x coordinate of top left location of rectangle
+        y: y coordinate of top left location of rectangle
+        end_x: x coordinate of bottom right location of rectangle
+        end_y: y coordinate of bottom right location of rectangle
+        color: color of rectangle
 
-        Returns:
-            altered image
+        Returns
+        -------
+        altered image
         """
 
         new_image = cv2.rectangle(image, pt1=(x,y), pt2=(end_x,end_y), color=color, thickness=2)
@@ -281,14 +293,16 @@ class GUI:
         """
         Draws a point at a specified location on an image
 
-        Args:
-            image: image
-            center_x: x coordinate of point
-            center_y: y coordinate of point
-            color: color of rectangle
+        Params
+        ------
+        image: image
+        center_x: x coordinate of point
+        center_y: y coordinate of point
+        color: color of rectangle
 
-        Returns:
-            altered image
+        Returns
+        -------
+        altered image
         """
         new_image = cv2.circle(image, (center_x, center_y), radius=5, color=color, thickness=-1)
         return new_image
@@ -299,15 +313,17 @@ class GUI:
         """
         Draws text at a specified location on an image
 
-        Args:
-            image: image
-            x: x coordinate of text
-            y: y coordinate of text
-            color: color of rectangle
-            label: text to draw
+        Params
+        ------
+        image: image
+        x: x coordinate of text
+        y: y coordinate of text
+        color: color of rectangle
+        label: text to draw
 
-        Returns:
-            altered image
+        Returns
+        -------
+        altered image
         """
         new_image = cv2.putText(image, label, (x,y), cv2.FONT_HERSHEY_DUPLEX, 0.7, color, 2)
         return new_image
@@ -323,12 +339,13 @@ class GUI:
         will remove the previous center since there can only be one center
         - Otherwise: draws the element specified by self._curr_mode at the location of mouse click
         
-        Args:
-            event: type of mouse event
-            clicked_x: x coordinate of click
-            clicked_y: y coordinate of click
-            flags: dw abt it
-            params: dw abt it
+        Params
+        ------
+        event: type of mouse event
+        clicked_x: x coordinate of click
+        clicked_y: y coordinate of click
+        flags: dw abt it
+        params: dw abt it
         """
         if event == cv2.EVENT_LBUTTONUP and self._curr_mode != Tooth.NO_BOX:
             draw = True
@@ -379,12 +396,13 @@ class GUI:
             1) saves image to /processed/manual/[img_name]/manual[file_type]
             1) saves data to /processed/manual/[img_name]/manual data.csv
 
-        Args:
-            file_name: name of image with file extension (not needed but for uniform purposes)
-            img_name: name of image without file extension
-            file_extension: file extension of image
-            mode: one of Match.ONE_D or Match.TWO_D
-            image: image to save
+        Params
+        ------
+        file_name: name of image with file extension (not needed but for uniform purposes)
+        img_name: name of image without file extension
+        file_extension: file extension of image
+        mode: one of Match.ONE_D or Match.TWO_D
+        image: image to save
         """
 
         if mode == Match.ONE_D:  
@@ -406,59 +424,3 @@ class GUI:
         self.w = np.delete(self.w, index)
         self.h = np.delete(self.h, index)
         self.type = np.delete(self.type, index)
-
-
-def plot_previous_data(file_name: str, img_name: str, file_type: str, mode: Match, df: pd.DataFrame) -> None:
-    """
-    Plot df data onto image and save.
-
-    If mode is Match.ONE_D, read 
-        1) image from /processed/projection/[img_name]/projection[filetype];
-    If mode is Match.TWO_D, read 
-        1) image from /img/[file_name]
-    
-    Args:
-        file_name: name of image with file extension (not needed but for uniform purposes)
-        img_name: name of image without file extension
-        file_extension: file extension of image
-        mode: one of Match.ONE_D or Match.TWO_D
-        df: data to plot onto image and save
-    """
-    if mode == Match.ONE_D:
-        img_path = os.path.join("processed", "projection", img_name, f"projection{file_type}")
-    else:
-        img_path = os.path.join("img", file_name)
-
-    # reads dataframe
-    x = df["x"].to_numpy()
-    y = df["y"].to_numpy()
-    w = df["w"].to_numpy()
-    h = df["h"].to_numpy()
-    type = np.array([])
-    for i in df["type"]:
-        if i == "Tooth.TOOTH":
-            type = np.append(type, Tooth.TOOTH)
-        elif i == "Tooth.GAP":
-            type = np.append(type, Tooth.GAP)
-        elif i == "Tooth.CENTER_T":
-            type = np.append(type, Tooth.CENTER_T)
-        elif i == "Tooth.CENTER_G":
-            type = np.append(type, Tooth.CENTER_G)
-        elif i == "Tooth.ERROR_T":
-            type = np.append(type, Tooth.ERROR_T)
-        elif i == "Tooth.ERROR_G":
-            type = np.append(type, Tooth.ERROR_G)
-
-    if not os.path.isfile(img_path):
-        raise RuntimeError(f"{img_path} does not exist. A hyperbola fit was likely not found or did you run fitProject first?")
-
-    image = cv2.imread(img_path)
-    
-    if mode == Match.ONE_D:
-        for i in range(len(x)):
-            image = GUI.draw_tooth(image, int(x[i]-1/2*w[i]), int(y[i]-1/2*h[i]), w[i], h[i], type[i])
-    else:
-        for i in range(len(x)):
-            image = GUI.draw_tooth(image, int(x[i]), int(y[i]), w[i], h[i], type[i])
-
-    GUI.save(file_name, img_name, file_type, mode, image, df)

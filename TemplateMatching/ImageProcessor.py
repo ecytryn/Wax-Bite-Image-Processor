@@ -2,15 +2,21 @@
 import os 
 import cv2
 import time
+import matplotlib as mpl
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 import warnings
+from scipy.optimize import fsolve
+from scipy.signal import find_peaks
+
 
 #helper functions
-import hyperbola_solve
-import GUI
-from utils import Match, CONFIG, Filter, make_dir, suffix, end_procedure
+from GUI import GUI
+from utils import Match, CONFIG, Filter, Tooth, Cross
+from helper import make_dir, suffix, end_procedure, \
+    axis_symmetry, equidistant_set, intersection_over_union, \
+    plot_hyperbola_linear, project_data, project_arclength
 
 
 # creates the folder structure
@@ -59,9 +65,15 @@ class ImageProcessor:
     file_type: image file-extension 
     file_name: name of image file with file-extension
     img_name: name of image file without file-extension
-    image: actual image data
+    image: image
+    image_proj: projected image
     height: height of image (pixels)
     width: width of image (pixels)
+
+    matching_data: template matching data
+    manual_data: manual matching data
+    filtered_data: filtered data
+    manual_data_1D: manual matching data projected
     """
 
     _PATH_ROOT = os.getcwd()
@@ -98,21 +110,24 @@ class ImageProcessor:
             make_dir(directory)
 
 
-        assert os.path.isfile(os.path.join(self._PATH_ROOT,'img', self.file_name)), f"'{self.file_name}' does not exist in img"
+        assert os.path.isfile(os.path.join(self._PATH_IMG, self.file_name)), f"'{self.file_name}' does not exist in img"
 
         # image and image projection data 
-        self.image = cv2.imread(os.path.join('img', file_name), cv2.IMREAD_GRAYSCALE)
-        self.image_proj = None
+        image_proj_path = os.path.join(self._PATH_PROJECTION, f"projection{self.file_type}")
+        self.image = cv2.imread(os.path.join(self._PATH_IMG, file_name))
+        self.image_proj = cv2.imread(image_proj_path) if os.path.isfile(image_proj_path) else None
         self.height = self.image.shape[0]
         self.width = self.image.shape[1]
 
         # pandas data
         matching_data_path = os.path.join(self._PATH_MATCHING, "template matching.csv")
         manual_data_path = os.path.join(self._PATH_MANUAL, "manual data.csv")
+        manual_data_path_1D = os.path.join(self._PATH_MANUAL, "manual data 1D.csv")
         filtered_data_path = os.path.join(self._PATH_FILTER, "raw.csv") # all files are created at the same time
 
         self.matching_data = pd.read_csv(matching_data_path) if os.path.isfile(matching_data_path) else None
         self.manual_data = pd.read_csv(manual_data_path) if os.path.isfile(manual_data_path) else None
+        self.manual_data_1D = pd.read_csv(manual_data_path_1D) if os.path.isfile(manual_data_path_1D) else None
         self.filtered_data = pd.read_csv(filtered_data_path) if os.path.isfile(filtered_data_path) else None
 
 
@@ -145,17 +160,19 @@ class ImageProcessor:
             raise RuntimeError(f"projected image for {self.img_name} is not found; did you run fit project first?")
             
         # set up config thresholds, image data, template path
+        # note that img is converted into grayscale for template matching
+        
         if mode == Match.TWO_D:
             threshold = CONFIG.THRESHOLD
             iou_threshold = CONFIG.IOU_THRESHOLD
             templates = [file for file in os.listdir(self._PATH_TEMPLATE) if suffix(file) in CONFIG.FILE_TYPES]
-            img = self.image
+            img = cv2.cvtColor(self.image.copy(), cv2.COLOR_BGR2GRAY)
             template_dir = self._PATH_TEMPLATE
         elif mode == Match.ONE_D:
             threshold = CONFIG.THRESHOLD_1D
             iou_threshold = CONFIG.IOU_THRESHOLD_1D
             templates = [file for file in os.listdir(self._PATH_TEMPLATE_1D) if suffix(file) in CONFIG.FILE_TYPES]
-            img = self.image_proj
+            img = cv2.cvtColor(self.image_proj.copy(), cv2.COLOR_BGR2GRAY)
             template_dir = self._PATH_TEMPLATE_1D
 
         teeth = []
@@ -175,7 +192,7 @@ class ImageProcessor:
                 for pt in zip(*filtered_matches[::-1]):
                     intersect = False
                     for tooth in teeth[::]:
-                        if self._intersection_over_union([pt[0], pt[1], template_w, template_h,
+                        if intersection_over_union([pt[0], pt[1], template_w, template_h,
                                                 matching_score[pt[1]][pt[0]]], tooth) > iou_threshold:
                             # if a location that intersects has a better matching score, replace
                             if matching_score[pt[1]][pt[0]] > tooth[4]:
@@ -220,35 +237,6 @@ class ImageProcessor:
         if display_time:
             print(f"MATCH       | '{self.file_name}: {time.time()-start_time} s")
         end_procedure()  
-
-
-    @staticmethod
-    def _intersection_over_union(p1: list[int, int, int, int], p2: list[int, int, int, int]) -> float:
-        """
-        Computes the intersection area over the union area of two boxes ('intersection
-        over union' score). Helper of template_matching. 
-
-        Params
-        ------
-        p1: [x, y, w, h] (box 1)
-        p2: [x, y, w, h] (box 2)
-
-        Returns
-        -------
-        iou: intersection over union score
-        """
-        #calculation of overlap; A = topleft corner, B = bottomright corner
-        x_top_left = max(p1[0], p2[0])
-        y_top_left = max(p1[1], p2[1])
-        x_bot_right = min(p1[0]+p1[2], p2[0]+p2[2])
-        y_bot_right = min(p1[1]+p1[3], p2[1]+p2[3])
-        inter_area = max(0, x_bot_right - x_top_left + 1) * max(0, y_bot_right - y_top_left + 1)
-        box1_area = p1[2] * p1[3]
-        box2_area = p2[2] * p2[3]
-
-        # score of overlap
-        iou = inter_area / float(box1_area + box2_area - inter_area)
-        return iou 
 
 
     #---------------------------------------------------------------------------------------------------
@@ -426,7 +414,7 @@ class ImageProcessor:
         start_time = time.time()
 
         try:
-            GUI.GUI(self.file_name, self.img_name, self.file_type, mode)
+            GUI(self.file_name, self.img_name, self.file_type, mode)
         except RuntimeError as error:
             print(error)
 
@@ -440,22 +428,326 @@ class ImageProcessor:
 
     #---------------------------------------------------------------------------------------------------
 
-    def fitProject(self, display_time: bool = False):
-        '''
-        takes data from "filter data" and project. If CONFIG.FILTER == Filter.MANUAL, also project manual data. 
-        '''
-
+    def fit_project(self, display_time: bool = False):
+        """
+        """
         start_time = time.time()
-        path = os.path.join('processed', "filter", self.img_name, "raw.csv")
-        assert os.path.isfile(path), f"filtered files do not exist in /processed/filter/{self.img_name} - did you run filter first?"
-        try:
-            hyperbola_solve.solve(self.file_name, self.img_name, self.file_type, self.height)
-        except RuntimeError as error:
-            print(error)
 
+        # load the correct filtered data
+        x = self.filtered_data["x"].to_numpy()
+        y = self.filtered_data["y"].to_numpy()
+
+        # matrix operations to solve for coefficient of best fitting conic; also solves for x-intercepts (bottom edge of image)
+        matrixT = [x**2, x*y, y**2, x, y]
+        matrix = np.transpose(matrixT)
+        coeff = np.matmul(np.linalg.inv(np.matmul(matrixT, matrix)),np.matmul(matrixT, np.ones(np.shape(matrix)[0])))
+        (A,B,C,D,E) = coeff
+        x_inter = np.roots([A, self.height*B+D, -1+C*self.height**2+E*self.height])
+
+        # if conic is a hyperbola, find equidistant set
+        error = False
+        if B**2-4*A*C < 0:
+            hyperbola_fit = plot_hyperbola_linear(min(x_inter), max(x_inter), coeff)
+            error = True
+        else: 
+            try: 
+                hyperbola_fit = equidistant_set(min(x_inter), max(x_inter), coeff)
+            except RuntimeError as err:
+                raise RuntimeError(err)
+
+        # plot fit
+        img = self.image.copy()
+        fig, ax = plt.subplots()
+        ax.imshow(img, cmap=mpl.colormaps['gray'])
+        ax.plot(hyperbola_fit[0], hyperbola_fit[1], '.-r', label="fit")
+        
+        # save figure 
+        os.chdir(self._PATH_FIT)
+        fig.savefig(f"fit{self.file_type}")
+        os.chdir(self._PATH_ROOT)
+        
+        # if conic not a hyperbola, raise error
+        if error:
+            raise RuntimeError(f"""Unable to fit a Hyperbola or Parabola; Circle or Ellipse detected.
+            See 'fit{self.file_type}' in /processed/fit/{self.img_name} for more detail.
+            A={A}, B={B}, C={C}, D={D}, E={E}""")
+
+        # pixel values of projected image
+        proj_img = []
+        # normal for every arclength point
+        normal_xs = []
+        normal_ys = []
+        # tangent for every arclength point
+        tangent_xs =[]
+        tangent_ys = []
+
+        for i in range(len(hyperbola_fit[0])):
+            projection = project_arclength(hyperbola_fit[0][i], hyperbola_fit[1][i], coeff) # (x, y, normal, tagent)
+            temp = []
+
+            # append normal/tangent components
+            normal_xs.append(projection[2][0])
+            normal_ys.append(projection[2][1])
+            tangent_xs.append(projection[3][0])
+            tangent_ys.append(projection[3][1])
+
+            for j in range(len(projection[0])):
+                try:
+                    # get the pixel value
+                    pixel = img[projection[1][j],projection[0][j]]
+                    temp.append([pixel[0], pixel[1], pixel[2]])
+                except IndexError:
+                    # if out of bounds, append WHITE
+                    temp.append([255,255,255])
+            
+            proj_img.append(temp)
+            # generates sampling plot
+            ax.plot(projection[0], projection[1], '.-y', label="projection")
+
+        # sets up a data frame to store projection data
+        df_proj = pd.DataFrame()
+        df_proj["arclength loc"] = range(len(hyperbola_fit[0]))
+        df_proj["x_2D"] = hyperbola_fit[0]
+        df_proj["y_2D"] = hyperbola_fit[1]
+        df_proj["tangent_x"] = tangent_xs
+        df_proj["tangent_y"] = tangent_ys
+        df_proj["normal_x"] = normal_xs
+        df_proj["normal_y"] = normal_ys
+
+        # save data and projection image
+        os.chdir(self._PATH_PROJECTION)
+        df_proj.to_csv(f"projection.csv")
+        proj_img_transpose = cv2.transpose(np.array(proj_img))
+        cv2.imwrite(f"projection{self.file_type}", proj_img_transpose)
+        fig.savefig(f"projection sampling{self.file_type}")
+        self.image_proj = cv2.imread(f"projection{self.file_type}")
+        os.chdir(self._PATH_ROOT)
+
+
+        if CONFIG.FILTER == Filter.MANUAL:
+            
+            teeth_df = pd.DataFrame()
+            closest_proj_indecies = []
+            closest_ys = []
+            side = [50 for _ in range(len(x))]
+
+            for tooth_ind in range(len(x)):
+                proj_data = project_data(x[tooth_ind], y[tooth_ind],coeff) #return (x, distance)
+                closest_x = proj_data[0] 
+                closest_y = proj_data[1]
+                closest_proj_indecies.append(np.argmin([abs(i-closest_x) for i in hyperbola_fit[0]]))
+                closest_ys.append(CONFIG.SAMPLING_WIDTH+closest_y)
+
+            teeth_df["x"] = closest_proj_indecies
+            teeth_df["y"] = closest_ys
+            teeth_df["w"] = side
+            teeth_df["h"] = side
+            df_manual = self.manual_data
+            center_ind = self.sum_dot_prod(coeff)
+
+            t = df_manual.index[df_manual["type"]=="Tooth.CENTER_T"].to_numpy()
+            g = df_manual.index[df_manual["type"]=="Tooth.CENTER_G"].to_numpy()
+            assert len(t)+len(g) < 2, f"more than one center tooth or gap found in {self.img_name}.csv"
+
+            # if center tooth doesn't exist 
+            if len(t)+len(g) == 0:
+                if df_manual["type"][center_ind] == "Tooth.TOOTH":
+                    df_manual["type"][center_ind] = "Tooth.CENTER_T"
+                elif df_manual["type"][center_ind] == "Tooth.GAP":
+                    df_manual["type"][center_ind] = "Tooth.CENTER_G"
+            else:
+                if len(t) > 0 and center_ind != t[0] or len(g) > 0 and center_ind != g[0]:
+                        print(f"Alternative center index found: {center_ind}; please ensure the current center index is correct")
+
+            # find and mark potential errors
+            potential_errors = self.arclength_histogram(closest_proj_indecies)
+            for e in potential_errors:
+                if df_manual["type"][e] == "Tooth.TOOTH":
+                    df_manual["type"][e] = "Tooth.ERROR_T"
+                elif df_manual["type"][e] == "Tooth.GAP":
+                    df_manual["type"][e] = "Tooth.ERROR_G"
+
+            teeth_df["type"] = df_manual["type"]
+
+            self.manual_data = df_manual
+            self.manual_data_1D = teeth_df
+            # save and re-plot altered data
+            self.update_data_plot(Match.TWO_D)
+            self.update_data_plot(Match.ONE_D)
+            
         if display_time:
-            print(f"FIT PROJECT | '{self.file_name}': {time.time()-start_time} s")
+            print(f"FIT/PROJECT | '{self.file_name}': {time.time()-start_time} s")
         end_procedure()
 
 
+    def update_data_plot(self, mode: Match) -> None:
+        """
+        Plot df data onto image and save.
+
+        If mode is Match.ONE_D, read 
+            1) image from /processed/projection/[img_name]/projection[filetype];
+        If mode is Match.TWO_D, read 
+            1) image from /img/[file_name]
+        
+        Params
+        ------
+        mode: one of Match.ONE_D or Match.TWO_D
+        """
+        if mode == Match.ONE_D:
+            if self.image_proj is None:
+                raise RuntimeError(f"projected image for {self.img_name} is not found; did you run fit project first?")
+            image = self.image_proj.copy()
+            df = self.manual_data_1D
+        else:
+            image = self.image.copy()
+            df = self.manual_data
+
+        # reads dataframe
+        x = df["x"].to_numpy()
+        y = df["y"].to_numpy()
+        w = df["w"].to_numpy()
+        h = df["h"].to_numpy()
+        type = np.array([])
+        for i in df["type"]:
+            if i == "Tooth.TOOTH":
+                type = np.append(type, Tooth.TOOTH)
+            elif i == "Tooth.GAP":
+                type = np.append(type, Tooth.GAP)
+            elif i == "Tooth.CENTER_T":
+                type = np.append(type, Tooth.CENTER_T)
+            elif i == "Tooth.CENTER_G":
+                type = np.append(type, Tooth.CENTER_G)
+            elif i == "Tooth.ERROR_T":
+                type = np.append(type, Tooth.ERROR_T)
+            elif i == "Tooth.ERROR_G":
+                type = np.append(type, Tooth.ERROR_G)
+
+        if mode == Match.ONE_D:
+            for i in range(len(x)):
+                image = GUI.draw_tooth(image, int(x[i]-1/2*w[i]), int(y[i]-1/2*h[i]), w[i], h[i], type[i])
+        else:
+            for i in range(len(x)):
+                image = GUI.draw_tooth(image, int(x[i]), int(y[i]), w[i], h[i], type[i])
+
+        GUI.save(self.file_name, self.img_name, self.file_type, mode, image, df)
+
+
+    def arclength_histogram(self, arclength_location: list[float]) -> list[float]:
+        """
+        Create 4 distance histograms with 10, 20, 30, 40 bin respectively. Saves 
+        results to '/processed/projection'. Returns indecies of teeth involved 
+        in creating distances outside thresholds (potential errors). 
+
+        Params
+        ------
+        arclength_location: a list arclength positions of the data points
+        """
+        
+        distances = []
+        for location in range(len(arclength_location)-1):
+            distances.append(arclength_location[location+1] - arclength_location[location])
+
+
+        hist, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, tight_layout=True)
+        ax1.hist(distances, bins=10)
+        ax2.hist(distances, bins=20)
+        ax3.hist(distances, bins=30)
+        ax4.hist(distances, bins=40)
+
+        ax1.grid()
+        ax2.grid()
+        ax3.grid()
+        ax4.grid()
+
+        os.chdir(self._PATH_PROJECTION)
+        hist.savefig(f"distance histogram{self.file_type}")
+        os.chdir(self._PATH_ROOT)
+
+        suspect_distances = [ind for ind in range(len(distances)) 
+                            if (distances[ind] <= CONFIG.ERROR_LOWER_B or distances[ind] >= CONFIG.ERROR_UPPER_B)]
+
+        res = []
+        for dist in suspect_distances:
+            res.append(dist)
+            res.append(dist + 1)
+        return res
+
+        
+    def sum_dot_prod(self, coeff: tuple[float, float, float, float, float]) -> int:
+        """
+        """
+        axis_sym = axis_symmetry(coeff)
+        x = self.filtered_data["x"].to_numpy()
+        y = self.filtered_data["y"].to_numpy()
+
+        points = CONFIG.CROSS * 2 + 1
+
+        if len(x) < points: 
+            raise RuntimeError(f"Unable to perform {CONFIG.CROSS} crosses with {len(x)} points; {points} points needed")
+        
+        center_index = CONFIG.CROSS
+        dot_sums = []
+
+        while center_index < len(x) - CONFIG.CROSS:
+            dot_sum = 0
+            for c in range(CONFIG.CROSS):
+                p1i  = center_index + c + 1
+                p2i =  center_index - c - 1
+
+                vec1 = (x[p1i], y[p1i])
+                vec2 = (x[p2i], y[p2i])
+
+                vec_diff = np.subtract(vec1, vec2)            
+                if CONFIG.CROSS_METHOD == Cross.SQAURED:
+                    dot_sum += np.dot(vec_diff, axis_sym)**2
+                elif CONFIG.CROSS_METHOD == Cross.ABS:
+                    dot_sum += abs(np.dot(vec_diff, axis_sym))
+            dot_sums.append(dot_sum)
+            center_index += 1
+        
+
+        return np.argmin(dot_sums) + CONFIG.CROSS
+
+
     #---------------------------------------------------------------------------------------------------
+
+
+    def avg_intensity(self) -> None:
+        """
+        """
+        # don't really remember why but transpose here
+        data = cv2.transpose(self.image_proj.copy())
+        os.chdir(self._PATH_PROJECTION)
+        fig2, ax2 = plt.subplots()
+
+        fig2.set_figwidth(CONFIG.WIDTH_SIZE)
+        fig2.set_figheight(CONFIG.HEIGHT_SIZE)
+        fig2.tight_layout()
+
+        avg_intensity = np.mean(data, axis=1)
+        avg_window_intensity = []
+        for i in range(len(avg_intensity)):
+            if i - int(CONFIG.WINDOW_WIDTH/2) < 0:
+                start = 0
+            else: 
+                start = i - int(CONFIG.WINDOW_WIDTH/2)
+            if i + int(CONFIG.WINDOW_WIDTH/2) > len(data):
+                end = len(data)
+            else: 
+                end = i + int(CONFIG.WINDOW_WIDTH/2)
+            avg_window_intensity.append(np.mean(avg_intensity[start:end], axis=0))
+        
+        avg_intensity_graph = [255-i[0] for i in avg_window_intensity]
+
+        # assumes image is at current dir
+        if self.image_proj is None:
+            raise RuntimeError(f"projected image for {self.img_name} is not found; did you run fit project first?")
+        projection = self.image_proj.copy()
+
+        ax2.imshow(projection)
+        ax2.plot(range(len(avg_intensity_graph)),avg_intensity_graph, color='y')
+        local_max_index, _ = find_peaks(avg_intensity_graph, distance=30)
+        ax2.scatter(local_max_index,np.ones(len(local_max_index)), color='r')
+
+        fig2.savefig(f"projection intensity{self.file_type}")
+        os.chdir(self._PATH_ROOT)

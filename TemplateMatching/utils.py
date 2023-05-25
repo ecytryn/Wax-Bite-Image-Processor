@@ -1,10 +1,7 @@
 from enum import Enum, unique
 from dataclasses import dataclass
 import os
-import matplotlib.pyplot as plt
 import cv2
-from typing import Tuple
-import datetime
 
 
 # enum classes
@@ -99,10 +96,10 @@ class CONFIG:
 
     "OTHERS - STYLISTIC"
     #colors for manual editing; in format (G,B,R) not (R,G,B)!
-    CENTER: Tuple[int, int, int] = (255, 255, 0) #cyan
-    GAP: Tuple[int, int, int] = (0, 255, 255) #yellow
-    TOOTH: Tuple[int, int, int] = (0, 0, 255) #red
-    ERROR: Tuple[int, int, int] = (0, 165, 255) #orange
+    CENTER: tuple[int, int, int] = (255, 255, 0) #cyan
+    GAP: tuple[int, int, int] = (0, 255, 255) #yellow
+    TOOTH: tuple[int, int, int] = (0, 0, 255) #red
+    ERROR: tuple[int, int, int] = (0, 165, 255) #orange
     # plot style used by matplotlib
     PLOT_STYLE: str = "default"
     #matplotlib figure dimensions (used when output is too crammed)
@@ -112,36 +109,4 @@ class CONFIG:
     "OTHERS - INITIALIZATION"
     # accepted filetypes for templates and images
     FILE_TYPES = [".jpg", ".png", ".jpeg"]
-
-
-# general helper functions
-def make_dir(dir: str):
-    '''create a specified directory if it doesn't already exist'''
-    if not os.path.isdir(dir):
-        os.mkdir(dir)
-
-def suffix(file: str):
-    '''returns the suffix of a file'''
-    return os.path.splitext(file)[1]
-
-def end_procedure():
-    '''closes all current matplotlib and cv2 windows'''
-    plt.close("all")
-    cv2.destroyAllWindows()
-
-def print_divider():
-    '''prints a divider into the console'''
-    print("============================================================")
-
-
-def parse_date(fileName):
-    '''parses the date from the name of an image (assumes format MM_DD_YEAR...)'''
-    try:
-        year = int(fileName[6:10])
-        month = int(fileName[0:2])
-        day = int(fileName[3:5])
-    except Exception as e:
-        print(f"filename {fileName} is not in the correct format")
-
-    return datetime.datetime(year, month, day)
     

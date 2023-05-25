@@ -4,119 +4,150 @@ import sys
 
 # modules
 from ImageProcessor import ImageProcessor
-from utils import Match, CONFIG, suffix
+from utils import Match, CONFIG
+from helper import suffix, flag_to_integer
 from format_plot import format_result, plot_result
 
 
+#-----------------------------------------------------------
+"PROCESSES"
 
-def workflowOne(images):
+def workflow_one(images: list[str]) -> None:
+    """
+    Processes images through "workflow one", which encompasses 
+    template matching -> manual matching -> filtering
+    -> fit projecting -> formating / plotting of results
+
+    Params
+    ------
+    images: list of paths for images to processes
+    """
     # remember to change FILTER to Filter.MANUAL in CONFIG
     match(images)
     manual(images)
     fitproj(images)
     format()
+    
 
-def match(images):
+def match(images: list[str]):
+    """
+    Performs template matching on images
+
+
+    Params
+    ------
+    images: list of paths for images to processes
+    """
     for image in images:
         process_img = ImageProcessor(image)
         process_img.template_matching(True, Match.TWO_D)
 
-def manual(images):
+
+def manual(images: list[str]):
+    """
+    Opens interface for manual editing of data
+
+    Params
+    ------
+    images: list of paths for images to processes
+    """
     for image in images:
         process_img = ImageProcessor(image)
         process_img.manual(True, Match.TWO_D)
 
-def fitproj(images):
+
+def fitproj(images: list[str]):
+    """
+    Performs fitlering and projecting on images
+
+    Params
+    ------
+    images: list of paths for images to processes
+    """
     for image in images:
         process_img = ImageProcessor(image)
         process_img.filter(True)
-        process_img.fitProject(True)
+        process_img.fit_project(True)
 
-def format():
+
+def format() -> None:
+    """
+    Performs formating / plotting of results
+    """
     format_result()
     plot_result()
 
 
-def flag_to_integer(args: list[str], flag: str) -> int:
-    """
-    Checks whether the value followed by a flag is an integer. If
-    yes, return the integer.
 
-    Param
-    -----
-    args: list of command line arguments
-    flag: flag after which to search for integer
-    """
-    value = args[args.index(flag)+1]
-    try:
-        index = int(value)
-    except ValueError:
-        raise ValueError(f"{value} is not an integer.")
-    except IndexError:
-        raise IndexError(f"No integer followed by {flag}")
+#-----------------------------------------------------------
 
-    if index < 0:
-        raise RuntimeError(f"Flag {flag} is non positive")
-    return index
 
 
 if __name__ == "__main__":
-    args = sys.argv
 
-    # determine what to run
-    match_bool = False
-    manual_bool = False
-    fitproj_bool = False
-    format_bool = False
+    # obtains arguments
+    args = sys.argv
+    # bool structure for which processes to run
+    processes = {"match": False,
+                 "manual": False,
+                 "fitproj": False,
+                 "format": False}
     if "match" in args:
-        match_bool = True
+        processes["match"] = True
     if "manual" in args:
-        manual_bool = True
+        processes["manual"] = True
     if "fitproj" in args:
-        fitproj_bool = True
+        processes["fitproj"] = True
     if "format" in args:
-        format_bool = True
+        processes["format"] = True
     
+    # all other arguments 
     args = [arg for arg in args if (arg not in {"match", "manual", "fitproj", "format", "main.py"})]
+    # all images in image 
     images = sorted([file for file in os.listdir(os.path.join(os.getcwd(),"img")) if suffix(file) in CONFIG.FILE_TYPES])
     num_of_images = len(images)
-
-
+    
+    # if flags -s or -n exist 
     if "-s" in args or "-n" in args:
-        start_index = 0
-        num_to_process = num_of_images - start_index
-
-        if "-s" in args:
-            start_index = flag_to_integer(args, "-s")
-        if "-n" in args:
-            num_to_process = flag_to_integer(args, "-n")
-
+        start_index = flag_to_integer(args, "-s") if "-s" in args else 0
+        num_to_process = flag_to_integer(args, "-n") if "-n" in args else (num_of_images - start_index)
+        # get images
         images = images[start_index : min(start_index+num_to_process,num_of_images)]
-
+        # if empty set, raise error
         if len(images) == 0:
-            raise RuntimeError(f"Empty list detected: either starting index {start_index} is out of bounds (min = 0, max = {num_of_images-1}) or flag -n < 1")
-        else:
-            print(f"Processing images indexed {start_index} to {min(start_index+num_to_process-1,num_of_images-1)} (index starts at 0): '{images[0]}' to '{images[-1]}'")
+            raise RuntimeError(f"""Empty list detected: either starting index {start_index} 
+            is out of bounds (min = 0, max = {num_of_images-1}) or flag -n < 1""")
+        
+        print(f"""Processing images indexed {start_index} to {min(start_index+num_to_process-1,num_of_images-1)} 
+        (index starts at 0): '{images[0]}' to '{images[-1]}'""")
+        
+    # if no flags but there's still arguments, assume those are "named images"
     elif len(args) > 1:
         images = sorted([arg for arg in args if os.path.isfile(os.path.join("img", arg))])
         print(f"Processing images {images}")
+    # else process all 
     else:
         print(f"Processing all images")
 
-    if not any([match_bool, manual_bool, fitproj_bool, format_bool]):
+    # if no processes named, run all
+    if not any([processes["match"], 
+                processes["manual"], 
+                processes["fitproj"], 
+                processes["format"]]):
         print("Running: all")
-        workflowOne(images)
+        workflow_one(images)
     else:
-        if match_bool:
+        # otherwise run them one by one if they're true
+        if processes["match"]:
             print("Running: Template Matching")
             match(images)
-        if manual_bool:
+        if processes["manual"]:
             print("Running: Manual Processing")
             manual(images)
-        if fitproj_bool:
+        if processes["fitproj"]:
             print("Running: Fit Project")
             fitproj(images)
-        if format_bool:
+        if processes["format"]:
             print("Running: Format")
             format()
 
