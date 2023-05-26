@@ -16,7 +16,7 @@ from GUI import GUI
 from utils import Match, CONFIG, Filter, Tooth, Cross
 from helper import make_dir, suffix, end_procedure, \
     axis_symmetry, equidistant_set, intersection_over_union, \
-    plot_hyperbola_linear, project_data, project_arclength
+    plot_hyperbola_linear, project_data_one, project_arclength
 
 
 # creates the folder structure
@@ -212,8 +212,8 @@ class ImageProcessor:
         matching_data = {'x':[],'y':[], 'w':[],'h':[], 'score':[], 'match':[]}
         for pt in teeth:
             cv2.rectangle(matched_image, (pt[0], pt[1]), (pt[0] + pt[2], pt[1] + pt[3]), (255,255,0), 2)
-            matching_data['x'].append(int(pt[0] + pt[2]/2 - CONFIG.SQUARE/2))
-            matching_data['y'].append(int(pt[1] + pt[3]/2 - CONFIG.SQUARE/2))
+            matching_data['x'].append(int(pt[0] + pt[2]/2))
+            matching_data['y'].append(int(pt[1] + pt[3]/2))
             matching_data['w'].append(CONFIG.SQUARE)
             matching_data['h'].append(CONFIG.SQUARE)
             matching_data['score'].append(pt[4])
@@ -271,14 +271,12 @@ class ImageProcessor:
                 raise f"template matching data does not exist for {self.img_name} - did you run match first?"
             df = self.matching_data
 
+        x_raw = df['x']
+        y_raw = df['y']
         # stores "centered points"
         df_raw = pd.DataFrame()
-        df_raw['x'] = df['x']+df['w']/2
-        df_raw['y'] = df['y']+df['h']/2
-
-        x_raw = df_raw['x']
-        y_raw = df_raw['y']
-
+        df_raw['x'] = x_raw 
+        df_raw['y'] = y_raw 
         df_raw['gradient'] = np.gradient(y_raw, x_raw)
         df_raw['smoothness'] = np.gradient(df_raw['gradient'], x_raw)
         df_raw['gradient_even'] = np.gradient(y_raw)
@@ -414,7 +412,7 @@ class ImageProcessor:
         start_time = time.time()
 
         try:
-            GUI(self.file_name, self.img_name, self.file_type, mode)
+            GUI(self.file_name, self.img_name, self.file_type)
         except RuntimeError as error:
             print(error)
 
@@ -506,7 +504,7 @@ class ImageProcessor:
 
         # sets up a data frame to store projection data
         df_proj = pd.DataFrame()
-        df_proj["arclength loc"] = range(len(hyperbola_fit[0]))
+        df_proj["arclength_loc"] = range(len(hyperbola_fit[0]))
         df_proj["x_2D"] = hyperbola_fit[0]
         df_proj["y_2D"] = hyperbola_fit[1]
         df_proj["tangent_x"] = tangent_xs
@@ -529,10 +527,10 @@ class ImageProcessor:
             teeth_df = pd.DataFrame()
             closest_proj_indecies = []
             closest_ys = []
-            side = [50 for _ in range(len(x))]
+            side = [CONFIG.SQUARE for _ in range(len(x))]
 
             for tooth_ind in range(len(x)):
-                proj_data = project_data(x[tooth_ind], y[tooth_ind],coeff) #return (x, distance)
+                proj_data = project_data_one(x[tooth_ind], y[tooth_ind], coeff) #return (x, distance)
                 closest_x = proj_data[0] 
                 closest_y = proj_data[1]
                 closest_proj_indecies.append(np.argmin([abs(i-closest_x) for i in hyperbola_fit[0]]))
@@ -622,11 +620,7 @@ class ImageProcessor:
             elif i == "Tooth.ERROR_G":
                 type = np.append(type, Tooth.ERROR_G)
 
-        if mode == Match.ONE_D:
-            for i in range(len(x)):
-                image = GUI.draw_tooth(image, int(x[i]-1/2*w[i]), int(y[i]-1/2*h[i]), w[i], h[i], type[i])
-        else:
-            for i in range(len(x)):
+        for i in range(len(x)):
                 image = GUI.draw_tooth(image, int(x[i]), int(y[i]), w[i], h[i], type[i])
 
         GUI.save(self.file_name, self.img_name, self.file_type, mode, image, df)

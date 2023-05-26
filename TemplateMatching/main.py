@@ -6,7 +6,7 @@ import sys
 from ImageProcessor import ImageProcessor
 from utils import Match, CONFIG
 from helper import suffix, flag_to_integer
-from format_plot import format_result, plot_result
+from format_plot import analyze_result, format_result, plot_result
 
 
 #-----------------------------------------------------------
@@ -79,6 +79,12 @@ def format() -> None:
     plot_result()
 
 
+def analyze() -> None:
+    """
+    Open interface for analysis of results
+    """
+    analyze_result()
+
 
 #-----------------------------------------------------------
 
@@ -92,7 +98,8 @@ if __name__ == "__main__":
     processes = {"match": False,
                  "manual": False,
                  "fitproj": False,
-                 "format": False}
+                 "format": False,
+                 "analyze": False}
     if "match" in args:
         processes["match"] = True
     if "manual" in args:
@@ -101,9 +108,11 @@ if __name__ == "__main__":
         processes["fitproj"] = True
     if "format" in args:
         processes["format"] = True
+    if "analyze" in args:
+        processes["analyze"] = True
     
     # all other arguments 
-    args = [arg for arg in args if (arg not in {"match", "manual", "fitproj", "format", "main.py"})]
+    args = [arg for arg in args if (arg not in {"match", "manual", "fitproj", "format", "analyze", "main.py"})]
     # all images in image 
     images = sorted([file for file in os.listdir(os.path.join(os.getcwd(),"img")) if suffix(file) in CONFIG.FILE_TYPES])
     num_of_images = len(images)
@@ -134,7 +143,8 @@ if __name__ == "__main__":
     if not any([processes["match"], 
                 processes["manual"], 
                 processes["fitproj"], 
-                processes["format"]]):
+                processes["format"],
+                processes["analyze"]]):
         print("Running: all")
         workflow_one(images)
     else:
@@ -151,6 +161,9 @@ if __name__ == "__main__":
         if processes["format"]:
             print("Running: Format")
             format()
+        if processes["analyze"]:
+            print("Running: Analyze")
+            analyze()
 
 
 

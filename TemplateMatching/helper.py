@@ -175,7 +175,8 @@ def plot_hyperbola_linear(start, end, coeff) -> tuple[np.array, np.array]:
                 result[1].append(r)
     return result
 
-def project_data(x, y, coeff):
+
+def project_data_one(x, y, coeff):
     """
     """
     (A,B,C,D,E) = coeff
@@ -194,6 +195,8 @@ def project_data(x, y, coeff):
         return (hyperbola_x, distance)
     else:
         return (hyperbola_x, -distance)
+
+    
 
 def _project_data_func(t, args):
     """

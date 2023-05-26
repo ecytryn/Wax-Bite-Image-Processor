@@ -30,19 +30,13 @@ class GUI:
     """
 
     # tooth, gap, center tooth, center gap: 4 modes
-    MODES = [mode for mode in Tooth if mode != Tooth.NO_BOX]
+    MODES = [Tooth.TOOTH, Tooth.GAP, Tooth.CENTER_T, Tooth.CENTER_G]
 
-    def __init__(self, file_name: str, img_name: str, file_type: str, matching_mode: Match) -> None:
+    def __init__(self, file_name: str, img_name: str, file_type: str) -> None:
         """
         Initializes an instance of image editing interface.
 
-        If mode is Match.ONE_D, read 
-            1) image from /processed/projection/[img_name]/projection[filetype];
-            2) data from /processed/manual/[img_name]/manual data 1D.csv
-                2.1) if doesn't exist, read /processed/template matching/[img_name]/template matching 1D.csv
-                2.2) if doesn't exist, use empty data set
-
-        If mode is Match.TWO_D, read 
+        Read 
             1) image from /img/[file_name]
             2) data from /processed/manual/[img_name]/manual data.csv
                 2.1) if doesn't exist, read /processed/template matching/[img_name]/template matching.csv
@@ -53,7 +47,6 @@ class GUI:
         file_name: image name with file extension
         img_name: image name without file extension
         file_type: image extensiom
-        mode: one of Match.ONE_D or Match.TWO_D 
         """
 
         self.x = np.array([])
@@ -67,25 +60,15 @@ class GUI:
         self.file_name = file_name
         self.img_name = img_name
         self.file_type = file_type
-        self.matching_mode = matching_mode
 
         # find data path
-        if matching_mode == Match.ONE_D:
-            img_path = os.path.join("processed", "projection", img_name, f"projection{file_type}")
-            manual_data_path = os.path.join("processed", "manual", img_name, "manual data 1D.csv")
+        img_path = os.path.join("img", file_name)
+        manual_data_path = os.path.join("processed", "manual", img_name, f"manual data.csv")
 
-            if os.path.isfile(manual_data_path):
-                img_data_path = manual_data_path
-            else:
-                img_data_path = os.path.join("processed", "template matching", img_name, "template matching 1D.csv")
+        if os.path.isfile(manual_data_path):
+            img_data_path = manual_data_path
         else:
-            img_path = os.path.join("img", file_name)
-            manual_data_path = os.path.join("processed", "manual", img_name, f"manual data.csv")
-
-            if os.path.isfile(manual_data_path):
-                img_data_path = manual_data_path
-            else:
-                img_data_path = os.path.join("processed", "template matching", img_name, f"template matching.csv") 
+            img_data_path = os.path.join("processed", "template matching", img_name, f"template matching.csv") 
 
 
         # if image doesn't exist, raise error and stop
@@ -128,6 +111,9 @@ class GUI:
         cv2.setMouseCallback(img_name, self.left_click)
         self.mode_index = 0
 
+
+        self.ratio = 1 if CONFIG.MAX_WIDTH is None else CONFIG.MAX_WIDTH / image.shape[1]
+
         while True:
 
             # makes a copy of the original image 
@@ -157,10 +143,12 @@ class GUI:
                 text_img = cv2.putText(self.clone, "mode: viewing", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, (100,100,100), 2)
 
             # resize window size
-            self.ratio = CONFIG.MAX_WIDTH / text_img.shape[1]
-            dim = (CONFIG.MAX_WIDTH, int(text_img.shape[0] * self.ratio))
-            resized = cv2.resize(text_img, dim, interpolation=cv2.INTER_AREA)
-            cv2.imshow(img_name, resized)
+            if CONFIG.MAX_WIDTH is not None:
+                dimension = (CONFIG.MAX_WIDTH, int(image.shape[0] * self.ratio))
+                resized = cv2.resize(text_img, dimension, interpolation=cv2.INTER_AREA)
+                cv2.imshow(img_name, resized)
+            else: 
+                cv2.imshow(img_name, text_img)
 
             break_loop = self.wait_keyboard_logic()
             if break_loop:
@@ -196,7 +184,8 @@ class GUI:
             df_res["h"] = self.h
             df_res["type"] = self.type
             df_res.sort_values(by=["x"], inplace=True)
-            GUI.save(self.file_name, self.img_name, self.file_type, self.matching_mode, self.clone, df_res)
+
+            GUI.save(self.file_name, self.img_name, self.file_type, Match.TWO_D, self.clone, df_res)
             return True
         elif key == ord("1"): # 1
             self._curr_mode = Tooth.TOOTH
@@ -213,7 +202,6 @@ class GUI:
         return False
     
 
-
     @staticmethod
     def draw_tooth(image: list[list[list[int]]], x: float, y: float, w: float, 
                   h: float, type: Tooth, curr_mode: Tooth | None = None) -> list[list[list[int]]]:
@@ -223,8 +211,8 @@ class GUI:
         Params
         ------
         image: image
-        x: x coordinate of top left location of data point
-        y: y coordinate of top left location of data point
+        x: center x
+        y: center y
         w: width of data point
         h: height of data point
         type: one of Tooth.TOOTH, Tooth.GAP, Tooth.CENTER_T, Tooth.CENTER_G
@@ -238,10 +226,12 @@ class GUI:
         OFFSET_X = -5
         OFFSET_Y = 5
 
-        center_x = int(x + 1/2 * w)
-        center_y = int(y + 1/2 * h)
-        end_x = x + w
-        end_y = y + h
+        start_x = int(x - w/2)
+        start_y = int(y - h/2)
+        end_x = int(x + w/2)
+        end_y = int(y + h/2)
+        x = int(x)
+        y = int(y)
 
         if type == Tooth.TOOTH:
             color = CONFIG.TOOTH
@@ -249,24 +239,24 @@ class GUI:
             color = CONFIG.GAP
         elif type == Tooth.CENTER_T:
             color = CONFIG.CENTER
-            labelled_img = GUI._draw_label(image, center_x+OFFSET_X, center_y+OFFSET_Y, color, "T")
+            labelled_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "T")
         elif type == Tooth.CENTER_G:
             color = CONFIG.CENTER
-            labelled_img = GUI._draw_label(image, center_x+OFFSET_X, center_y+OFFSET_Y, color, "G")
+            labelled_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "G")
         elif type == Tooth.ERROR_T:
             color = CONFIG.ERROR
-            labelled_img = GUI._draw_label(image, center_x+OFFSET_X, center_y+OFFSET_Y, color, "T")
+            labelled_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "T")
         elif type == Tooth.ERROR_G:
             color = CONFIG.ERROR
-            labelled_img = GUI._draw_label(image, center_x+OFFSET_X, center_y+OFFSET_Y, color, "G")
+            labelled_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "G")
 
-        labelled_img = GUI._draw_center(image, center_x, center_y, color)
+        labelled_img = GUI._draw_center(image, x, y, color)
 
         # if no box, return 
         if curr_mode == Tooth.NO_BOX:
             return labelled_img
         # draw box
-        image_rec = GUI._draw_rectangle(labelled_img, x, y, end_x, end_y, color)
+        image_rec = GUI._draw_rectangle(labelled_img, start_x, start_y, end_x, end_y, color)
         return image_rec
     
     @staticmethod
@@ -288,12 +278,11 @@ class GUI:
         -------
         altered image
         """
-
         new_image = cv2.rectangle(image, pt1=(x,y), pt2=(end_x,end_y), color=color, thickness=2)
         return new_image
     
     @staticmethod
-    def _draw_center(image: list[list[list[int]]], center_x: int, center_y: int, 
+    def _draw_center(image: list[list[list[int]]], x: int, y: int, 
                     color: tuple[int, int, int]):
         """
         Draws a point at a specified location on an image
@@ -301,15 +290,15 @@ class GUI:
         Params
         ------
         image: image
-        center_x: x coordinate of point
-        center_y: y coordinate of point
+        x: x coordinate of point
+        y: y coordinate of point
         color: color of rectangle
 
         Returns
         -------
         altered image
         """
-        new_image = cv2.circle(image, (center_x, center_y), radius=5, color=color, thickness=-1)
+        new_image = cv2.circle(image, (x, y), radius=5, color=color, thickness=-1)
         return new_image
     
     @staticmethod
@@ -353,14 +342,17 @@ class GUI:
 
             for index in range(dataset_size):
                 # if the user clicks within a square, delete the square 
-                if (clicked_x >= self.x[index] and clicked_x <= self.x[index]+self.w[index] 
-                    and clicked_y >= self.y[index] and clicked_y <= self.y[index]+self.h[index]):
+                if (clicked_x >= self.x[index]-self.w[index]/2
+                    and clicked_x <= self.x[index]+self.w[index]/2
+                    and clicked_y >= self.y[index]-self.h[index]/2
+                    and clicked_y <= self.y[index]+self.h[index]/2):
                     self._delete_index_data(index)
                     draw = False
                     break
             
             # if the user clicks a new center, delete the old one
-            if draw and (self._curr_mode == Tooth.CENTER_T or self._curr_mode == Tooth.CENTER_G):
+            if draw and (self._curr_mode == Tooth.CENTER_T 
+                         or self._curr_mode == Tooth.CENTER_G):
                 center_t = np.where(self.type == Tooth.CENTER_T)
                 for index in center_t[0]:
                     self._delete_index_data(index)
@@ -370,8 +362,8 @@ class GUI:
 
             # otherwise, draw a square at the clicked location
             if draw:
-                new_x = int(clicked_x - 1/2 * CONFIG.SQUARE)
-                new_y = int(clicked_y - 1/2 * CONFIG.SQUARE)
+                new_x = int(clicked_x)
+                new_y = int(clicked_y)
                 self.x = np.append(self.x, new_x)
                 self.y = np.append(self.y, new_y)
                 self.w = np.append(self.w, CONFIG.SQUARE)

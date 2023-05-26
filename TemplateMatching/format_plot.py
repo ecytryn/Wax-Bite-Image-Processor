@@ -4,9 +4,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime, timedelta
 import time
+import cv2
 
-from utils import CONFIG
-from helper import parse_date
+from utils import CONFIG, Match
+from helper import parse_date, suffix
+from GUI import GUI
+
+
+DATA_DATES = []
+ALL_DATES = []
+FILE_NAMES = []
+
 
 
 def format_result() -> None:
@@ -88,9 +96,9 @@ def plot_result() -> None:
     format_result be ran first
     """
 
-    outputPath = os.path.join("processed", "output")
-    dfArclength = pd.read_csv(os.path.join(outputPath, "arclength data.csv"))
-    dfBinary = pd.read_csv(os.path.join(outputPath, "binary data.csv"))
+    output_path = os.path.join("processed", "output")
+    df_arclength = pd.read_csv(os.path.join(output_path, "arclength data.csv"))
+    dfBinary = pd.read_csv(os.path.join(output_path, "binary data.csv"))
 
     arcTooth = []
     arcGap = []
@@ -108,13 +116,13 @@ def plot_result() -> None:
     centerGY = []
 
     # convert string into dates
-    dates = sorted([datetime.strptime(d, '%Y-%m-%d') for d in dfArclength["date"]])
+    dates = sorted([datetime.strptime(d, '%Y-%m-%d') for d in df_arclength["date"]])
     # first two columns are: 1) index of df, 2) date
-    indexColumns = dfArclength.columns.to_list()[2:] 
+    indexColumns = df_arclength.columns.to_list()[2:] 
 
     for entryIndex in range(len(dates)):
         for columnIndex in indexColumns:
-            arcEntry = dfArclength[columnIndex][entryIndex]
+            arcEntry = df_arclength[columnIndex][entryIndex]
             binEntry = dfBinary[columnIndex][entryIndex]
 
             # if not empty
@@ -144,26 +152,26 @@ def plot_result() -> None:
                         binGap.append(float(columnIndex))
                         gapY.append(dates[entryIndex])
 
-    axFig, arcAx  = plt.subplots()
-    binFig, binAx = plt.subplots()
+    ax_fig, arc_ax  = plt.subplots()
+    bin_fig, bin_ax = plt.subplots()
 
-    axFig.set_figwidth(CONFIG.WIDTH_SIZE)
-    axFig.set_figheight(CONFIG.HEIGHT_SIZE)
-    binFig.set_figwidth(CONFIG.WIDTH_SIZE)
-    binFig.set_figheight(CONFIG.HEIGHT_SIZE)
+    ax_fig.set_figwidth(CONFIG.WIDTH_SIZE)
+    ax_fig.set_figheight(CONFIG.HEIGHT_SIZE)
+    bin_fig.set_figwidth(CONFIG.WIDTH_SIZE)
+    bin_fig.set_figheight(CONFIG.HEIGHT_SIZE)
 
-    axFig.suptitle("Arclength Plot")
-    binFig.suptitle("Index Plot")
+    ax_fig.suptitle("Arclength Plot")
+    bin_fig.suptitle("Index Plot")
 
-    arcAx.scatter(arcTooth, toothY, c="c", s=10)
-    arcAx.scatter(arcGap, gapY, c="#5A5A5A", s=10)
-    arcAx.scatter(arcCenterG, centerGY, c="#FFCCCB", s=10)
-    arcAx.scatter(arcCenterT, centerTY, c="r", s=10)
+    arc_ax.scatter(arcTooth, toothY, c="c", s=10)
+    arc_ax.scatter(arcGap, gapY, c="#5A5A5A", s=10)
+    arc_ax.scatter(arcCenterG, centerGY, c="#FFCCCB", s=10)
+    arc_ax.scatter(arcCenterT, centerTY, c="r", s=10)
 
-    binAx.scatter(binTooth, toothY, c="c", s=10)
-    binAx.scatter(binGap, gapY, c="#5A5A5A", s=10)
-    binAx.scatter(binCenterG, centerGY, c="#FFCCCB", s=10)
-    binAx.scatter(binCenterT, centerTY, c="r", s=10)
+    bin_ax.scatter(binTooth, toothY, c="c", s=10)
+    bin_ax.scatter(binGap, gapY, c="#5A5A5A", s=10)
+    bin_ax.scatter(binCenterG, centerGY, c="#FFCCCB", s=10)
+    bin_ax.scatter(binCenterT, centerTY, c="r", s=10)
 
 
     curr_date = dates[0]
@@ -176,20 +184,68 @@ def plot_result() -> None:
     teeth_index_ticks = np.linspace(-50, 50, num=101)
     teeth_arclength_ticks = np.linspace(-2500, 2500, num=101)
 
-    arcAx.set_xticks(teeth_arclength_ticks, minor=True)
-    binAx.set_xticks(teeth_index_ticks, minor=True)
-    arcAx.set_yticks(date_ticks, minor=True)
-    binAx.set_yticks(date_ticks, minor=True)
+    arc_ax.set_xticks(teeth_arclength_ticks, minor=True)
+    bin_ax.set_xticks(teeth_index_ticks, minor=True)
+    arc_ax.set_yticks(date_ticks, minor=True)
+    bin_ax.set_yticks(date_ticks, minor=True)
 
-    arcAx.grid(which='minor', color="k", linestyle=":", alpha=0.5)
-    binAx.grid(which='minor', color="k", linestyle=":", alpha=0.5)
-    arcAx.grid(which='major', color="k", alpha=0.7)
-    binAx.grid(which='major', color="k", alpha=0.7)
-    axFig.tight_layout()
-    binFig.tight_layout()
+    arc_ax.grid(which='minor', color="k", linestyle=":", alpha=0.5)
+    bin_ax.grid(which='minor', color="k", linestyle=":", alpha=0.5)
+    arc_ax.grid(which='major', color="k", alpha=0.7)
+    bin_ax.grid(which='major', color="k", alpha=0.7)
 
-    axFig.savefig(os.path.join(outputPath,"arclength plot.png"))
-    binFig.savefig(os.path.join(outputPath,"index plot.png"))
+
+    ax_fig.tight_layout()
+    bin_fig.tight_layout()
+
+    ax_fig.savefig(os.path.join(output_path,"arclength plot.png"))
+    bin_fig.savefig(os.path.join(output_path,"index plot.png"))
+
+    return(ax_fig, arc_ax, bin_fig, bin_ax)
+
+
+def analyze_result() -> None:
+    global DATA_DATES, ALL_DATES, FILE_NAMES
+    # set up 
+    format_result()
+    ax_fig, arc_ax, bin_fig, bin_ax = plot_result()
+
+    output_path = os.path.join("processed", "output")
+    df_arclength = pd.read_csv(os.path.join(output_path, "arclength data.csv"))
+    DATA_DATES = sorted([datetime.strptime(d, '%Y-%m-%d') for d in df_arclength["date"]])
+
+    FILE_NAMES = [file for file in os.listdir(os.path.join(os.getcwd(),"img")) 
+                     if suffix(file) in CONFIG.FILE_TYPES]
+    ALL_DATES = [parse_date(img_name) for img_name in FILE_NAMES]
+
+    ax_fig.canvas.mpl_connect("button_press_event", _plot_button_handler)
+    bin_fig.canvas.mpl_connect("button_press_event", _plot_button_handler)
+    plt.show()
+
+
+def _plot_button_handler(event) -> None:
+    """
+    """
+    if event.ydata is not None:
+        days_delta = timedelta(days = int(event.ydata))
+        start_time = datetime(year=1970, month=1, day=1)
+        clicked_time = start_time + days_delta
+
+        time_differences = np.absolute(np.array(DATA_DATES)- clicked_time)
+        selected_date = DATA_DATES[time_differences.argmin()]
+        selected_date_index = ALL_DATES.index(selected_date)
+
+        file_name = FILE_NAMES[selected_date_index]
+        img_name = os.path.splitext(file_name)[0]
+        file_extension = os.path.splitext(file_name)[1]
+
+        if event.button == 1:
+            img = cv2.imread(os.path.join(os.getcwd(), "processed", "manual", img_name, "manual 1D.jpg"))
+            cv2.imshow(img_name, img)
+            cv2.waitKey(0)
+            cv2.destroyWindow(img_name)
+        elif event.button == 3:
+            GUI(file_name, img_name, file_extension)
 
 
 
