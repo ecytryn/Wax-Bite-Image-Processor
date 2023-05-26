@@ -85,7 +85,8 @@ class CONFIG:
 
     "GUI"
     # side length of default manual squares
-    SQUARE = 30
+    SQUARE: int = 30
+    MAX_WIDTH: int = 1500 # shouldn't be large than image width
 
     "PLOT_MANUAL"
     # how much "time" elapsed between each image

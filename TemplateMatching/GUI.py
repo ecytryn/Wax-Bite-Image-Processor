@@ -155,7 +155,12 @@ class GUI:
                 text_img = cv2.putText(self.clone, "mode: center gap", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, CONFIG.CENTER, 2)
             else:
                 text_img = cv2.putText(self.clone, "mode: viewing", (10,40), cv2.FONT_HERSHEY_DUPLEX, 1.5, (100,100,100), 2)
-            cv2.imshow(img_name, text_img)
+
+            # resize window size
+            self.ratio = CONFIG.MAX_WIDTH / text_img.shape[1]
+            dim = (CONFIG.MAX_WIDTH, int(text_img.shape[0] * self.ratio))
+            resized = cv2.resize(text_img, dim, interpolation=cv2.INTER_AREA)
+            cv2.imshow(img_name, resized)
 
             break_loop = self.wait_keyboard_logic()
             if break_loop:
@@ -338,18 +343,13 @@ class GUI:
         - If self._curr_mode is Tooth.CENTER_T or Tooth.CENTER_G: clicking another location 
         will remove the previous center since there can only be one center
         - Otherwise: draws the element specified by self._curr_mode at the location of mouse click
-        
-        Params
-        ------
-        event: type of mouse event
-        clicked_x: x coordinate of click
-        clicked_y: y coordinate of click
-        flags: dw abt it
-        params: dw abt it
         """
         if event == cv2.EVENT_LBUTTONUP and self._curr_mode != Tooth.NO_BOX:
             draw = True
             dataset_size = len(self.x)
+
+            clicked_x = clicked_x / self.ratio
+            clicked_y = clicked_y / self.ratio
 
             for index in range(dataset_size):
                 # if the user clicks within a square, delete the square 
@@ -361,19 +361,19 @@ class GUI:
             
             # if the user clicks a new center, delete the old one
             if draw and (self._curr_mode == Tooth.CENTER_T or self._curr_mode == Tooth.CENTER_G):
-                centerT = np.where(self.type == Tooth.CENTER_T)
-                for index in centerT[0]:
+                center_t = np.where(self.type == Tooth.CENTER_T)
+                for index in center_t[0]:
                     self._delete_index_data(index)
-                centerG = np.where(self.type == Tooth.CENTER_G)
-                for index in centerG[0]:
+                center_g = np.where(self.type == Tooth.CENTER_G)
+                for index in center_g[0]:
                     self._delete_index_data(index)
 
             # otherwise, draw a square at the clicked location
             if draw:
-                newX = int(clicked_x - 1/2 * CONFIG.SQUARE)
-                newY = int(clicked_y - 1/2 * CONFIG.SQUARE)
-                self.x = np.append(self.x, newX)
-                self.y = np.append(self.y, newY)
+                new_x = int(clicked_x - 1/2 * CONFIG.SQUARE)
+                new_y = int(clicked_y - 1/2 * CONFIG.SQUARE)
+                self.x = np.append(self.x, new_x)
+                self.y = np.append(self.y, new_y)
                 self.w = np.append(self.w, CONFIG.SQUARE)
                 self.h = np.append(self.h, CONFIG.SQUARE)
                 self.type = np.append(self.type, self._curr_mode)

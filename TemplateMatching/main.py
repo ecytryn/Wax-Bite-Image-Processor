@@ -27,6 +27,7 @@ def workflow_one(images: list[str]) -> None:
     manual(images)
     fitproj(images)
     format()
+        
     
 
 def match(images: list[str]):
