@@ -247,7 +247,7 @@ def analyze_result(display_time: bool = False) -> None:
 
     plt.show()
     if display_time:
-        print(f"PLOT RESULT | {time.time()-start_time} s")
+        print(f"ANALYZE RES | {time.time()-start_time} s")
 
 START_INDEX = None
 
