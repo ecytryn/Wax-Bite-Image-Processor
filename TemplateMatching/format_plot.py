@@ -50,7 +50,7 @@ def format_result() -> None:
             max_length = len(df)
 
     # set dataframe shape (1 column for date + the rest for teeth indecies)
-    column_ids = range(max_center_index + max_length - 1) - max_center_index
+    column_ids = np.array(range(max_center_index + max_length - 1)) - max_center_index
     columns_names = [str(column_id) for column_id in column_ids]
     df_output_arclength = pd.DataFrame(columns=["date"]+columns_names)
     df_output_binary = pd.DataFrame(columns=["date"]+columns_names)
@@ -246,17 +246,29 @@ def _release_handler(event) -> None:
     """
     global START_INDEX
     if event.ydata is not None and START_INDEX is not None:
+
         data_index, selected_date_index =  _find_image_index(event.ydata)
 
         selected_indeces = []
-        for index in range(START_INDEX, data_index + 1):
-            selected_indeces.append(ALL_DATES.index(DATA_DATES[index]))
 
+        # this deals with drag from top to bottom or bottom to top
+        if START_INDEX < data_index:
+            start_index = START_INDEX
+            end_index = data_index
+        else:
+            start_index = data_index
+            end_index = START_INDEX
+        
+        START_INDEX = None
+
+        # between the start and end files, also append everything in between
+        for index in range(start_index, end_index + 1):
+            selected_indeces.append(ALL_DATES.index(DATA_DATES[index]))
 
         if event.button == 1:
             max_width = 0
 
-            # stack images into img
+            # find max width (for resizing)
             for index in selected_indeces:
                 curr_file_name = FILE_NAMES[index]
                 curr_img_name, curr_file_extension = os.path.splitext(curr_file_name)
@@ -265,43 +277,25 @@ def _release_handler(event) -> None:
                 max_width = curr_img.shape[1] if curr_img.shape[1] > max_width else max_width
 
 
-            selected_start_index = ALL_DATES.index(DATA_DATES[START_INDEX])
-            file_name = FILE_NAMES[selected_start_index]
-            img_name, file_extension = os.path.splitext(file_name)
-            img = cv2.imread(os.path.join(os.getcwd(), "processed", "manual", 
-                                          img_name, f"manual 1D{file_extension}"))
-            img_resized = cv2.resize(img, 
-                                     [max_width, CONFIG.SAMPLING_WIDTH * 2],
-                                    interpolation = cv2.INTER_AREA)
-            
-            START_INDEX = None
-            
+            # set up first image
+            img = []    
             # stack images into img_resized vertically
-            for index in selected_indeces:
-                if index != selected_start_index:
-                    curr_file_name = FILE_NAMES[index]
-                    curr_img_name = os.path.splitext(curr_file_name)[0]
-                    curr_file_extension = os.path.splitext(curr_file_name)[1]
-                    curr_img = cv2.imread(os.path.join(os.getcwd(), "processed", "manual", 
-                                                       curr_img_name, f"manual 1D{curr_file_extension}"))
-                    curr_img_resized = cv2.resize(curr_img, 
-                                     [max_width, CONFIG.SAMPLING_WIDTH * 2],
-                                    interpolation = cv2.INTER_AREA)
-                    img_resized = np.concatenate((curr_img_resized, img_resized), axis=0) 
+            for curr_index in selected_indeces:
+                img = _stack_img(img, max_width, curr_index)
 
             # resize window size
             if CONFIG.MAX_WIDTH is not None:
-                ratio = CONFIG.MAX_WIDTH / img_resized.shape[1]
-                dimension = (CONFIG.MAX_WIDTH, int(img_resized.shape[0] * ratio))
-                resized = cv2.resize(img_resized, dimension, interpolation=cv2.INTER_AREA)
-                cv2.imshow(img_name, resized)
+                ratio = CONFIG.MAX_WIDTH / img.shape[1]
+                dimension = (CONFIG.MAX_WIDTH, int(img.shape[0] * ratio))
+                resized = cv2.resize(img, dimension, interpolation=cv2.INTER_AREA)
+                cv2.imshow(DATA_DATES[start_index].strftime("%m_%d_%Y"), resized)
             else: 
-                cv2.imshow(img_name, img_resized)
+                cv2.imshow(DATA_DATES[start_index].strftime("%m_%d_%Y"), img)
 
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-def _find_image_index(ydata) -> int:
+def _find_image_index(ydata: float) -> int:
     """
     """
     days_delta = timedelta(days = int(ydata))
@@ -314,6 +308,23 @@ def _find_image_index(ydata) -> int:
     selected_date_index = ALL_DATES.index(selected_date)
 
     return (data_index, selected_date_index)
+
+def _stack_img(img, max_width: int, curr_index: int):
+    """
+    """
+    curr_file_name = FILE_NAMES[curr_index]
+    curr_img_name = os.path.splitext(curr_file_name)[0]
+    curr_file_extension = os.path.splitext(curr_file_name)[1]
+    curr_img = cv2.imread(os.path.join(os.getcwd(), "processed", "manual", 
+                                        curr_img_name, f"manual 1D{curr_file_extension}"))
+    curr_img_resized = cv2.resize(curr_img, 
+                        [max_width, CONFIG.SAMPLING_WIDTH * 2],
+                    interpolation = cv2.INTER_AREA)
+    if img != []:
+        curr_img_resized = np.concatenate((curr_img_resized, img), axis=0) 
+    
+    return curr_img_resized
+
 
 
 #---------------------------------------

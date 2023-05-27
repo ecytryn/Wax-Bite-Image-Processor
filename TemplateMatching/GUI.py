@@ -243,6 +243,8 @@ class GUI:
         end_y = int(y + h/2)
         x = int(x)
         y = int(y)
+        
+        altered_img = image
 
         if type == Tooth.TOOTH:
             color = CONFIG.TOOTH
@@ -250,25 +252,24 @@ class GUI:
             color = CONFIG.GAP
         elif type == Tooth.CENTER_T:
             color = CONFIG.CENTER
-            labelled_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "T")
+            altered_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "T")
         elif type == Tooth.CENTER_G:
             color = CONFIG.CENTER
-            labelled_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "G")
+            altered_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "G")
         elif type == Tooth.ERROR_T:
             color = CONFIG.ERROR
-            labelled_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "T")
+            altered_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "T")
         elif type == Tooth.ERROR_G:
             color = CONFIG.ERROR
-            labelled_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "G")
+            altered_img = GUI._draw_label(image, x+OFFSET_X, y+OFFSET_Y, color, "G")
 
-        labelled_img = GUI._draw_center(image, x, y, color)
+        if curr_mode != Tooth.NO_BOX:
+            altered_img = GUI._draw_rectangle(altered_img, start_x, start_y, end_x, end_y, color)
 
-        # if no box, return 
-        if curr_mode == Tooth.NO_BOX:
-            return labelled_img
+        if type in [Tooth.TOOTH, Tooth.GAP]:
+            altered_img = GUI._draw_center(image, x, y, color)
         # draw box
-        image_rec = GUI._draw_rectangle(labelled_img, start_x, start_y, end_x, end_y, color)
-        return image_rec
+        return altered_img
     
     @staticmethod
     def _draw_rectangle(image: list[list[list[int]]], x: int, y: int, 
