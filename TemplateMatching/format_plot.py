@@ -87,6 +87,8 @@ def format_result(display_time: bool = False) -> None:
         entry_so_far += 1
 
     # save to output folder
+    df_output_binary.sort_values(by=['date'], inplace=True)
+    df_output_arclength.sort_values(by=['date'], inplace=True)
     df_output_binary.to_csv(os.path.join("processed", "output", "binary data.csv"))
     df_output_arclength.to_csv(os.path.join("processed", "output", "arclength data.csv"))
 
@@ -94,6 +96,69 @@ def format_result(display_time: bool = False) -> None:
     if display_time:
         print(f"FORMAT      | {time.time()-start_time} s")
 
+def format_erupfall(display_time: bool = False) -> None:
+    """
+    """
+    start_time = time.time()
+
+    # checks if output data exist
+    output_path = os.path.join("processed", "output")
+    try:
+        # df_arclength = pd.read_csv(os.path.join(output_path, "arclength data.csv"))
+        df_binary = pd.read_csv(os.path.join(output_path, "binary data.csv"))
+    except:
+        raise RuntimeError(f"Formatted output data do not exist in /processed/output. Did you run format_result?")
+
+    # parse string into dates from output file
+    dates = [datetime.strptime(d, '%Y-%m-%d') for d in df_binary["date"]]
+    # first two columns are: 1) index and 2) date, rest are teeth index
+    index_columns = df_binary.columns.to_list()[2:] 
+
+    
+    eruption_data = {"date": dates[1:]}
+    fall_out_data = {"date": dates[1:]}
+
+    for column_index in index_columns:
+        # arclength_column = df_arclength[column_index].to_numpy()
+        binary_column = df_binary[column_index].to_numpy()
+        eruption_column = []
+        fall_out_column = []
+
+        for entry_index in range(1, len(dates)):
+            prev_val = binary_column[entry_index-1]
+            curr_val = binary_column[entry_index]
+
+
+            if (np.isnan(prev_val) or 
+                np.isnan(curr_val)):
+                eruption_column.append(None)
+                fall_out_column.append(None)
+            else:
+                if(prev_val == 0 and 
+                    curr_val == 1):
+                    eruption_column.append(1)
+                else:
+                    eruption_column.append(0)
+
+                if(prev_val == 1 and 
+                    curr_val == 0):
+                    fall_out_column.append(1)
+                else:
+                    fall_out_column.append(0)
+        
+        eruption_data[column_index] = eruption_column
+        fall_out_data[column_index] = fall_out_column
+
+    # save to output folder
+    df_eruption = pd.DataFrame(data=eruption_data)
+    df_eruption.sort_values(by=['date'], inplace=True)
+    df_eruption.to_csv(os.path.join("processed", "output", "eruption data.csv"))
+    df_fall_out = pd.DataFrame(data=fall_out_data)
+    df_fall_out.sort_values(by=['date'], inplace=True)
+    df_fall_out.to_csv(os.path.join("processed", "output", "fall out data.csv"))
+
+    if display_time:
+        print(f"FORMAT ERUP | {time.time()-start_time} s")
 
 
 def plot_result(display_time: bool = False) -> None:
@@ -111,14 +176,16 @@ def plot_result(display_time: bool = False) -> None:
     try:
         df_arclength = pd.read_csv(os.path.join(output_path, "arclength data.csv"))
         df_binary = pd.read_csv(os.path.join(output_path, "binary data.csv"))
+        df_eruption = pd.read_csv(os.path.join(output_path, "eruption data.csv"))
+        df_fall_out = pd.read_csv(os.path.join(output_path, "fall out data.csv"))
     except:
         raise RuntimeError(f"Formatted output data do not exist in /processed/output. Did you run format_result?")
 
-    arc_tooth_x, arc_gap_x, arc_center_t_x, arc_center_g_x = [], [], [], []
-    bin_tooth_x, bin_gap_x, bin_center_t_x, bin_center_g_x = [], [], [], []
-    tooth_y, gap_y, center_t_y, center_g_y = [], [], [], []
-
+    arc_tooth_x, arc_gap_x = [], []
+    bin_tooth_x, bin_gap_x = [], []
+    tooth_y, gap_y = [], []
     # parse string into dates from output file
+
     dates = [datetime.strptime(d, '%Y-%m-%d') for d in df_arclength["date"]]
     # first two columns are: 1) index and 2) date, rest are teeth index
     index_columns = df_arclength.columns.to_list()[2:] 
@@ -135,82 +202,132 @@ def plot_result(display_time: bool = False) -> None:
             if not pd.isna(bin_entry):
                 # if a tooth
                 if int(bin_entry) == 1:
-                    # if column is 0 (center tooth)
-                    if int(column_index) == 0:
-                        arc_center_t_x.append(float(arc_entry))
-                        bin_center_t_x.append(float(column_index))
-                        center_t_y.append(dates[entry_index]) 
-                    # if not a centertooth
-                    else:
-                        arc_tooth_x.append(float(arc_entry))
-                        bin_tooth_x.append(float(column_index))
-                        tooth_y.append(dates[entry_index])
+                    arc_tooth_x.append(float(arc_entry))
+                    bin_tooth_x.append(float(column_index))
+                    tooth_y.append(dates[entry_index])
                 # if a gap
                 elif int(bin_entry) == 0:
-                    # if column is 0 (center gap)
-                    if int(column_index) == 0:
-                        arc_center_g_x.append(float(arc_entry))
-                        bin_center_g_x.append(float(column_index))
-                        center_g_y.append(dates[entry_index])
-                    # if not a center gap
-                    else:
-                        arc_gap_x.append(float(arc_entry))
-                        bin_gap_x.append(float(column_index))
-                        gap_y.append(dates[entry_index])
+                    arc_gap_x.append(float(arc_entry))
+                    bin_gap_x.append(float(column_index))
+                    gap_y.append(dates[entry_index])
 
-    # plot 
+
+
+    erup_x, nerup_x = [], []
+    fall_x, nfall_x = [], []
+    erup_y, nerup_y = [], []
+    fall_y, nfall_y = [], []
+    erupfall_dates = dates[1:]
+
+    for entry_index in range(len(erupfall_dates)):
+        for column_index in index_columns:
+            # date = entry_index (the entry_indexth entry), tooth index = col_index
+            # it's possible for it to not exist
+            erup_entry = df_eruption[column_index][entry_index]
+            fall_entry = df_fall_out[column_index][entry_index]
+
+            # if exists
+            if not pd.isna(erup_entry):
+                # if eruption
+                if int(erup_entry) == 1:
+                    erup_x.append(float(column_index))
+                    erup_y.append(erupfall_dates[entry_index])
+                # if not eruption
+                elif int(erup_entry) == 0:
+                    nerup_x.append(float(column_index))
+                    nerup_y.append(erupfall_dates[entry_index])
+
+            # if exists
+            if not pd.isna(fall_entry):
+                # if eruption
+                if int(fall_entry) == 1:
+                    fall_x.append(float(column_index))
+                    fall_y.append(erupfall_dates[entry_index])
+                # if not eruption
+                elif int(fall_entry) == 0:
+                    nfall_x.append(float(column_index))
+                    nfall_y.append(erupfall_dates[entry_index])   
+
+    # initialize figures
     ax_fig, arc_ax  = plt.subplots()
     bin_fig, bin_ax = plt.subplots()
+    erup_fig, erup_ax = plt.subplots()
+    fall_fig, fall_ax = plt.subplots()
 
+    #set dimensions and titles
     ax_fig.set_figwidth(CONFIG.WIDTH_SIZE)
     ax_fig.set_figheight(CONFIG.HEIGHT_SIZE)
     bin_fig.set_figwidth(CONFIG.WIDTH_SIZE)
     bin_fig.set_figheight(CONFIG.HEIGHT_SIZE)
+    erup_fig.set_figwidth(CONFIG.WIDTH_SIZE)
+    erup_fig.set_figheight(CONFIG.HEIGHT_SIZE)
+    fall_fig.set_figwidth(CONFIG.WIDTH_SIZE)
+    fall_fig.set_figheight(CONFIG.HEIGHT_SIZE)
 
     ax_fig.suptitle("Arclength Plot")
     bin_fig.suptitle("Index Plot")
+    erup_fig.suptitle("Eruption Plot")
+    fall_fig.suptitle("Fall Out Plot")
 
-    arc_ax.scatter(arc_tooth_x, tooth_y, c="c", s=10)
-    arc_ax.scatter(arc_gap_x, gap_y, c="#5A5A5A", s=10)
-    arc_ax.scatter(arc_center_g_x, center_g_y, c="#FFCCCB", s=10)
-    arc_ax.scatter(arc_center_t_x, center_t_y, c="r", s=10)
+    # plot data
+    arc_ax.scatter(arc_tooth_x, tooth_y, c="indigo", s=10)
+    arc_ax.scatter(arc_gap_x, gap_y, c="lightgray", s=10)
+    bin_ax.scatter(bin_tooth_x, tooth_y, c="indigo", s=10)
+    bin_ax.scatter(bin_gap_x, gap_y, c="lightgray", s=10)
 
-    bin_ax.scatter(bin_tooth_x, tooth_y, c="c", s=10)
-    bin_ax.scatter(bin_gap_x, gap_y, c="#5A5A5A", s=10)
-    bin_ax.scatter(bin_center_g_x, center_g_y, c="#FFCCCB", s=10)
-    bin_ax.scatter(bin_center_t_x, center_t_y, c="r", s=10)
+    erup_ax.scatter(erup_x, erup_y, c="red", s=10)
+    erup_ax.scatter(nerup_x, nerup_y, c="lightgray", s=10)
+    fall_ax.scatter(fall_x, fall_y, c="red", s=10)
+    fall_ax.scatter(nfall_x, nfall_y, c="lightgray", s=10)
 
     # set ticks from first to last date (for the grid)
+    dates = sorted(dates)
     curr_date = dates[0]
     last_date = dates[-1]
     date_ticks = []
     while curr_date <= last_date:
         date_ticks.append(curr_date)
         curr_date += timedelta(days=3)
+    
 
+    # get minor and major grid lines
     teeth_index_ticks = np.linspace(-50, 50, num=101)
     teeth_arclength_ticks = np.linspace(-2500, 2500, num=101)
 
     arc_ax.set_xticks(teeth_arclength_ticks, minor=True)
-    bin_ax.set_xticks(teeth_index_ticks, minor=True)
     arc_ax.set_yticks(date_ticks, minor=True)
+    bin_ax.set_xticks(teeth_index_ticks, minor=True)
     bin_ax.set_yticks(date_ticks, minor=True)
+    erup_ax.set_xticks(teeth_index_ticks, minor=True)
+    erup_ax.set_yticks(date_ticks, minor=True)
+    fall_ax.set_xticks(teeth_index_ticks, minor=True)
+    fall_ax.set_yticks(date_ticks, minor=True)
 
-    arc_ax.grid(which='minor', color="k", linestyle=":", alpha=0.5)
-    bin_ax.grid(which='minor', color="k", linestyle=":", alpha=0.5)
-    arc_ax.grid(which='major', color="k", alpha=0.7)
-    bin_ax.grid(which='major', color="k", alpha=0.7)
+    # settings for minor and major grid lines
+    arc_ax.grid(which='minor', color="k", linestyle=":", alpha=0.6)
+    arc_ax.grid(which='major', color="k")
+    bin_ax.grid(which='minor', color="k", linestyle=":", alpha=0.6)
+    bin_ax.grid(which='major', color="k")
+    erup_ax.grid(which='minor', color="k", linestyle=":", alpha=0.6)
+    erup_ax.grid(which='major', color="k")
+    fall_ax.grid(which='minor', color="k", linestyle=":", alpha=0.6)
+    fall_ax.grid(which='major', color="k")
 
     ax_fig.tight_layout()
     bin_fig.tight_layout()
+    erup_fig.tight_layout()
+    fall_fig.tight_layout()
 
     ax_fig.savefig(os.path.join(output_path,"arclength plot.png"))
     bin_fig.savefig(os.path.join(output_path,"index plot.png"))
+    erup_fig.savefig(os.path.join(output_path,"eruption plot.png"))
+    fall_fig.savefig(os.path.join(output_path,"fall out plot.png"))
 
     if display_time:
         print(f"PLOT RESULT | {time.time()-start_time} s")
 
-    return(ax_fig, arc_ax, bin_fig, bin_ax)
+    return(ax_fig, bin_fig, erup_fig, fall_fig)
+
 
 #---------------------------------------------------------------------
 
@@ -229,7 +346,8 @@ def analyze_result(display_time: bool = False) -> None:
     start_time = time.time()
     # set up 
     format_result()
-    ax_fig, arc_ax, bin_fig, bin_ax = plot_result()
+    format_erupfall()
+    ax_fig, bin_fig, erup_fig, fall_fig = plot_result()
     output_path = os.path.join("processed", "output")
     df_arclength = pd.read_csv(os.path.join(output_path, "arclength data.csv"))
 
@@ -244,6 +362,10 @@ def analyze_result(display_time: bool = False) -> None:
     ax_fig.canvas.mpl_connect("button_release_event", _on_release)
     bin_fig.canvas.mpl_connect("button_press_event", _on_click)
     bin_fig.canvas.mpl_connect("button_release_event", _on_release)
+    erup_fig.canvas.mpl_connect("button_press_event", _on_click)
+    erup_fig.canvas.mpl_connect("button_release_event", _on_release)
+    fall_fig.canvas.mpl_connect("button_press_event", _on_click)
+    fall_fig.canvas.mpl_connect("button_release_event", _on_release)
 
     plt.show()
     if display_time:
@@ -321,6 +443,7 @@ def _on_release(event) -> None:
 
             cv2.waitKey(0)
             cv2.destroyAllWindows()
+            
 
 def _find_image_index(ydata: float) -> int:
     """
@@ -341,6 +464,7 @@ def _find_image_index(ydata: float) -> int:
     selected_date_index = ALL_DATES.index(selected_date)
 
     return (data_index, selected_date_index)
+
 
 def _stack_img(img, max_width: int, curr_index: int):
     """

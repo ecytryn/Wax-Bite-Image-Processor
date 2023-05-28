@@ -6,7 +6,7 @@ import sys
 from ImageProcessor import ImageProcessor
 from utils import Match, CONFIG
 from helper import suffix, flag_to_integer
-from format_plot import analyze_result, format_result, plot_result
+from format_plot import analyze_result, format_result, plot_result, format_erupfall
 
 
 #-----------------------------------------------------------
@@ -75,6 +75,7 @@ def format() -> None:
     Performs formating / plotting of results
     """
     format_result(True)
+    format_erupfall(True)
     plot_result(True)
 
 
