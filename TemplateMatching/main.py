@@ -112,6 +112,7 @@ if __name__ == "__main__":
     
     # all other arguments 
     args = [arg for arg in args if (arg not in {"match", "manual", "fitproj", "format", "analyze", "main.py"})]
+    print(args)
     # all images in image 
     images = sorted([file for file in os.listdir(os.path.join(os.getcwd(),"img")) if suffix(file) in CONFIG.FILE_TYPES])
     num_of_images = len(images)
@@ -131,7 +132,7 @@ if __name__ == "__main__":
         (index starts at 0): '{images[0]}' to '{images[-1]}'""")
         
     # if no flags but there's still arguments, assume those are "named images"
-    elif len(args) > 1:
+    elif len(args) > 0:
         images = sorted([arg for arg in args if os.path.isfile(os.path.join("img", arg))])
         print(f"Processing images {images}")
     # else process all 
