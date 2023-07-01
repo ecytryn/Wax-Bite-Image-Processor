@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from pynput.keyboard import Key, Controller
 from utils import Tooth, Match, CONFIG
+import time
 
 
 class GUI:
@@ -32,7 +33,8 @@ class GUI:
     # tooth, gap, center tooth, center gap: 4 modes
     MODES = [Tooth.TOOTH, Tooth.GAP, Tooth.CENTER_T, Tooth.CENTER_G]
 
-    def __init__(self, file_name: str, img_name: str, file_type: str) -> None:
+    def __init__(self, file_name: str, img_name: str, file_type: str,
+                 file_names: list[str], index: int, display_time: bool) -> None:
         """
         Initializes an instance of image editing interface.
 
@@ -47,7 +49,11 @@ class GUI:
         file_name: image name with file extension
         img_name: image name without file extension
         file_type: image extensiom
+        file_names: a lexically sorted array of all images in images folder
+        index: the index of current image in file_names images
         """
+
+        start_time = time.time()
 
         self.x = np.array([])
         self.y = np.array([])
@@ -60,6 +66,9 @@ class GUI:
         self.file_name = file_name
         self.img_name = img_name
         self.file_type = file_type
+        self.file_names = file_names
+        self.index = index
+        self.display_time = display_time
 
         # find data path
         img_path = os.path.join("img", file_name)
@@ -115,7 +124,7 @@ class GUI:
         self.ratio = 1 if CONFIG.MAX_WIDTH is None else CONFIG.MAX_WIDTH / self.image.shape[1]
 
         while True:
-
+            
             # makes a copy of the original image 
             self.clone = self.image.copy()
             dataset_size = len(self.x)
@@ -152,6 +161,8 @@ class GUI:
 
             break_loop = self.wait_keyboard_logic()
             if break_loop:
+                if display_time:
+                    print(f"MANUAL      | '{self.file_name}': {time.time()-start_time} s")
                 break
 
 
@@ -210,6 +221,35 @@ class GUI:
         elif key == ord("4"): # 4
             self._curr_mode = Tooth.CENTER_G
             self.mode_index = 3
+        elif (key == 2 and self.index > 0) or (key == 3 and self.index < len(self.file_names) - 1):
+            if key == 2:
+                new_index = self.index - 1
+            elif key == 3:
+                new_index = self.index + 1
+            new_file_name = self.file_names[new_index]
+            new_file_type = os.path.splitext(new_file_name)[1]
+            new_img_name = new_file_name.replace(new_file_type, "")
+            # create dataframe to save
+            df_res = pd.DataFrame()
+            df_res["x"] = self.x
+            df_res["y"] = self.y
+            df_res["w"] = self.w
+            df_res["h"] = self.h
+            df_res["type"] = self.type
+            df_res.sort_values(by=["x"], inplace=True)
+            # redraw data without boxes
+            dataset_size = len(self.x)
+            for i in range(dataset_size):
+                self.image = GUI.draw_tooth(self.image, 
+                                            self.x[i], 
+                                            self.y[i], 
+                                            self.w[i], 
+                                            self.h[i], 
+                                            self.type[i], 
+                                            Tooth.NO_BOX)
+            GUI.save(self.file_name, self.img_name, self.file_type, Match.TWO_D, self.image, df_res)
+            GUI(new_file_name, new_img_name, new_file_type, self.file_names, new_index, self.display_time)
+            return True
         return False
     
 

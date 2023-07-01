@@ -81,18 +81,21 @@ class ImageProcessor:
     _PATH_TEMPLATE = os.path.join(_PATH_ROOT, "template")
     _PATH_TEMPLATE_1D = os.path.join(_PATH_ROOT, "template 1D")
 
-    def __init__(self, file_name: str) -> None:
+    def __init__(self, file_names: list[str], index: int) -> None:
         """
         Constructor for Image Processor
 
         Params
         ------
         file_name: name of image file
+        file_names: a lexically sorted array of all images in images folder
+        index: the index of current image in file_names images
         """ 
-
-        self.file_type = os.path.splitext(file_name)[1]
-        self.file_name = file_name
-        self.img_name = file_name.replace(self.file_type, "")
+        self.file_names = file_names
+        self.index = index
+        self.file_name = file_names[index]
+        self.file_type = os.path.splitext(self.file_name)[1]
+        self.img_name = self.file_name.replace(self.file_type, "")
 
         # PATHS
         self._PATH_MATCHING = os.path.join(self._PATH_ROOT, "processed", "template matching", self.img_name)
@@ -109,12 +112,11 @@ class ImageProcessor:
                           self._PATH_PROJECTION}:
             make_dir(directory)
 
-
         assert os.path.isfile(os.path.join(self._PATH_IMG, self.file_name)), f"'{self.file_name}' does not exist in img"
 
         # image and image projection data 
         image_proj_path = os.path.join(self._PATH_PROJECTION, f"projection{self.file_type}")
-        self.image = cv2.imread(os.path.join(self._PATH_IMG, file_name))
+        self.image = cv2.imread(os.path.join(self._PATH_IMG, self.file_name))
         self.image_proj = cv2.imread(image_proj_path) if os.path.isfile(image_proj_path) else None
         self.height = self.image.shape[0]
         self.width = self.image.shape[1]
@@ -392,18 +394,15 @@ class ImageProcessor:
         """
         Opens interface for manual editing (a GUI instance).
         """
-        start_time = time.time()
-
         try:
-            GUI(self.file_name, self.img_name, self.file_type)
+            GUI(self.file_name, self.img_name, self.file_type, self.file_names, 
+                self.index, display_time)
         except RuntimeError as error:
             print(error)
 
         manual_data_path = os.path.join(self._PATH_MANUAL, "manual data.csv")
         self.manual_data = pd.read_csv(manual_data_path) if os.path.isfile(manual_data_path) else None
 
-        if display_time:
-            print(f"MANUAL      | '{self.file_name}': {time.time()-start_time} s")
         end_procedure()
 
 
