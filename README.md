@@ -3,36 +3,35 @@
 ## Initialization
 
 - Create virtual machine (VM)
-  > > python3 -m venv venv (also try replacing python3 with python or python3.10)
+  > python3 -m venv venv (also try replacing python3 with python or python3.10)
 - Start VM
-  > > source venv/bin/activate (mac/linux)
-  > > venv\Scripts\activate.bat (windows)
+  > source venv/bin/activate (mac/linux)
+  > venv\Scripts\activate.bat (windows)
 - Install Dependencies
-  > > pip install -r requirements.txt
-- You might get a "notice" saying you should update pip. If so:
-  > > pip install --upgrade pip
-  > > then install dependencies again
-- Run
-  > > python main.py
-  > > to initialize folder structure. Below demonstrates the output folder structure. Note that you must have all the .py files for the program to run.
+  > pip install -r requirements.txt
+- You might get a "notice" saying you should update pip. If so, update pip then install dependencies again:
+  > pip install --upgrade pip
+- To initialize folder structure, simply run any command adhering to the Command Format (see "Recurring Start" section)
+  > python main.py (most basic version)
+- Below demonstrates the output folder structure. Note that you must have all the .py files for the program to run normally.
 
-## Recurring start
+## Recurring Start
 
 - Every new session, restart the virtual environment by running
-  > > source venv/bin/activate (mac/linux)
-  > > venv\Scripts\activate.bat (windows)
+  > source venv/bin/activate (mac/linux)
+  > venv\Scripts\activate.bat (windows)
 - This can be deactivated with
-  > > deactivate
+  > deactivate
 - Put raw images in the "/img" folder. If one doesn't exist, make one or run
-  > > python main.py
+  > python main.py
 - Command Format:
-  > > python main.py -n 1 -s 1 [keyword] [keyword]...
+  > python main.py -n 1 -s 1 [keyword] [keyword]...
 - "-n" and "-s" are flags representing the "number" of images to process and the "starting location" from which to process the images. The above example will process 1 image starting at the 2nd image file (first location is 0; the images are ordered lexigraphically, not by date! They sort similarly but are not exactly identical).
 - The keywords determine what processes to run. If none is specified, all processes except "analyze" is ran.
 - Keywords:
   - match, manual, fitproj, format, analyze
 
-## Introducing the processes
+## Introducing the Processes
 
 Match: performs "template matching" which finds matches of the templates in the template folder onto the images to automate data collection
 Manual: manual intervention to edit the collected data
@@ -56,3 +55,9 @@ Analyze: an interactive way for data exploration
 - left click: open projected image of the data of the day of interest
 - left click + drag: open projected images of the data of the days of interest (stacked)
 - right click: open the manual GUI to edit data (changes not applied on plots until "format" or "analyze" is ran again)
+
+## Notes:
+
+- Analyze first runs format then opens the interactive tool; thus running format before analyze is redundant
+- Control + C and close any outstanding GUI or matplotlib windows to force exit / restart the program
+- Many variable settings can be found in utils.py
