@@ -91,6 +91,11 @@ def format_result(display_time: bool = False) -> None:
     # save to output folder
     df_output_binary.sort_values(by=['date'], inplace=True)
     df_output_arclength.sort_values(by=['date'], inplace=True)
+
+    # trim columns with na
+    df_output_binary.dropna(axis=1, inplace=True)
+    df_output_arclength.dropna(axis=1, inplace=True)
+
     df_output_binary.to_csv(os.path.join("processed", "output", "binary data.csv"))
     df_output_arclength.to_csv(os.path.join("processed", "output", "arclength data.csv"))
 
@@ -133,27 +138,21 @@ def format_erupfall(display_time: bool = False) -> None:
             prev_val = binary_column[entry_index-1]
             curr_val = binary_column[entry_index]
 
-
-            if (np.isnan(prev_val) or 
-                np.isnan(curr_val)):
-                eruption_column.append(None)
-                fall_out_column.append(None)
+            if(prev_val == 0 and 
+                curr_val == 1):
+                eruption_column.append(no_erup_so_far + 1)
+                no_erup_so_far = 0
             else:
-                if(prev_val == 0 and 
-                    curr_val == 1):
-                    eruption_column.append(no_erup_so_far + 1)
-                    no_erup_so_far = 0
-                else:
-                    no_erup_so_far += 1
-                    eruption_column.append(0)
+                no_erup_so_far += 1
+                eruption_column.append(0)
 
-                if(prev_val == 1 and 
-                    curr_val == 0):
-                    fall_out_column.append(no_fall_so_far + 1)
-                    no_fall_so_far = 0
-                else:
-                    no_fall_so_far += 1
-                    fall_out_column.append(0)
+            if(prev_val == 1 and 
+                curr_val == 0):
+                fall_out_column.append(no_fall_so_far + 1)
+                no_fall_so_far = 0
+            else:
+                no_fall_so_far += 1
+                fall_out_column.append(0)
         
         eruption_data[column_index] = eruption_column
         fall_out_data[column_index] = fall_out_column
