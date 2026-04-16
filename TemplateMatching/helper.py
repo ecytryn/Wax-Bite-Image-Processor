@@ -49,15 +49,20 @@ def print_divider() -> None:
     print("============================================================")
 
 def parse_date(file_name: str) -> datetime.datetime:
-    '''parses the date from the name of an image (assumes format MM_DD_YEAR...)'''
+    '''parses the date from the name of an image (assumes format MM_DD_YYYY or YYYY_MM_DD)'''
     try:
-        year = int(file_name[6:10])
-        month = int(file_name[0:2])
-        day = int(file_name[3:5])
+        if file_name[4] == '_':
+            year = int(file_name[0:4])
+            month = int(file_name[5:7])
+            day = int(file_name[8:10])
+        else:
+            year = int(file_name[6:10])
+            month = int(file_name[0:2])
+            day = int(file_name[3:5])
     except Exception as e:
-        print(f"filename {file_name} is not in the correct format")
+        print(f"filename {file_name} is not in the correct format (expected MM_DD_YYYY or YYYY_MM_DD)")
     return datetime.datetime(year, month, day)
-
+    
 def suffix(file: str) -> str:
     '''returns the suffix of a file'''
     return os.path.splitext(file)[1]

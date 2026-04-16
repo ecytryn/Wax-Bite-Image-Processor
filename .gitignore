@@ -1,6 +1,4 @@
-./img
-./template
-./template 1D
+img
 .dockerignore
 
 # Generated files
