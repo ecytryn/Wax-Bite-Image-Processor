@@ -45,11 +45,16 @@ def format_result(display_time: bool = False) -> None:
 
         # find center index
         center_tooth = df.index[df["type"] == "Tooth.CENTER_T"].to_numpy()
-        if len(center_tooth) == 0:
-            center_index = df.index[df["type"] == "Tooth.CENTER_G"].to_numpy()[0]
-        else:
+        center_gap = df.index[df["type"] == "Tooth.CENTER_G"].to_numpy()
+        if len(center_tooth) > 0:
             center_index = center_tooth[0]
-        center_indecies.append(center_index)
+        elif len(center_gap) > 0:
+            center_index = center_gap[0]
+        else:
+            print(
+                f"WARNING: No center marker found for '{subdirname}' — skipping this date."
+            )
+            continue
 
         # update max length, update max center index if applicable
         if center_index > max_center_index:
