@@ -3,6 +3,7 @@ import os
 import sys
 
 from format_plot import analyze_result, format_erupfall, format_result, plot_result
+from GUI import GUI
 from helper import flag_to_integer, suffix
 
 # modules
@@ -51,9 +52,13 @@ def manual(files: list[str]):
     ------
     images: list of paths for images to processes
     """
+    GUI.stop_requested = False  # reset at the start of each run
     for file_index in range(len(files)):
         process_img = ImageProcessor(files, file_index)
         process_img.manual(True)
+        if GUI.stop_requested:
+            print("Save-and-exit requested — stopping manual processing.")
+            break
 
 
 def fitproj(files: list[str]):
@@ -65,6 +70,18 @@ def fitproj(files: list[str]):
     images: list of paths for images to processes
     """
     for file_index in range(len(files)):
+        img_name = os.path.splitext(files[file_index])[0]
+        manual_path = os.path.join("processed", "manual", img_name, "manual data.csv")
+        proj_path = os.path.join("processed", "projection", img_name, "projection.csv")
+
+        # skip if projection is already up to date
+        if os.path.isfile(proj_path) and os.path.isfile(manual_path):
+            if os.path.getmtime(proj_path) >= os.path.getmtime(manual_path):
+                print(
+                    f"SKIP        | '{files[file_index]}': unchanged since last fitproj"
+                )
+                continue
+
         try:
             process_img = ImageProcessor(files, file_index)
             process_img.filter(True)
