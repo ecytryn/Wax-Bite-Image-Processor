@@ -720,7 +720,7 @@ def _stack_img(img, max_width: int, curr_index: int):
     curr_img_resized = cv2.resize(
         labeled, [max_width, CONFIG.SAMPLING_WIDTH * 2], interpolation=cv2.INTER_AREA
     )
-    if img != []:
+    if isinstance(img, np.ndarray):
         curr_img_resized = np.concatenate((curr_img_resized, img), axis=0)
 
     return curr_img_resized
