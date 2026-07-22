@@ -172,6 +172,9 @@ class GUI:
             self.clone = self.image.copy()
             dataset_size = len(self.x)
 
+            # compute tooth indices relative to center for labeling
+            tooth_indices = self._compute_2d_indices()
+
             # draw data
             for i in range(dataset_size):
                 self.clone = GUI.draw_tooth(
@@ -183,6 +186,21 @@ class GUI:
                     self.type[i],
                     self._curr_mode,
                 )
+
+            # draw index labels (after boxes so they're on top)
+            if tooth_indices is not None and self._curr_mode != Tooth.NO_BOX:
+                for i in range(dataset_size):
+                    label_x = int(self.x[i]) - 5
+                    label_y = int(self.y[i] - self.h[i] / 2) - 8
+                    cv2.putText(
+                        self.clone,
+                        str(tooth_indices[i]),
+                        (label_x, label_y),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (255, 255, 255),
+                        1,
+                    )
 
             # sets current mode and display image
             if self._curr_mode == Tooth.TOOTH:
@@ -679,6 +697,36 @@ class GUI:
         cv2.imwrite(PATH_IMG, image)
         df_res.to_csv(PATH_DATA)
         cv2.destroyAllWindows()
+
+    def _compute_2d_indices(self) -> list[int] | None:
+        """
+        Compute tooth indices relative to center marker for the current
+        annotation data. Returns a list of indices (one per data point,
+        in current array order), or None if no center marker exists.
+        """
+        CENTER_TYPES = (Tooth.CENTER_T, Tooth.CENTER_G, Tooth.CENTER_N)
+
+        # find center marker in current data
+        center_row = None
+        for ct in CENTER_TYPES:
+            matches = np.where(self.type == ct)[0]
+            if len(matches) > 0:
+                center_row = matches[0]
+                break
+        if center_row is None:
+            return None
+
+        # sort by x to determine positional order
+        sort_order = np.argsort(self.x)
+        # find where center_row falls in the sorted order
+        center_sorted_pos = np.where(sort_order == center_row)[0][0]
+
+        # assign index relative to center's sorted position
+        indices = [0] * len(self.x)
+        for sorted_pos, original_pos in enumerate(sort_order):
+            indices[original_pos] = sorted_pos - center_sorted_pos
+
+        return indices
 
     def _delete_index_data(self, index: int) -> None:
         """ """

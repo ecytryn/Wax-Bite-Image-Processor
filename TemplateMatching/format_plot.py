@@ -458,6 +458,118 @@ def analyze_result(display_time: bool = False) -> None:
 
 START_INDEX = None
 
+CENTER_TYPES = ("Tooth.CENTER_T", "Tooth.CENTER_G", "Tooth.CENTER_N")
+
+
+def _compute_indices(img_name: str) -> list[int] | None:
+    """
+    Read manual data 1D.csv for the given image and compute tooth indices
+    relative to center (center = 0, left = negative, right = positive).
+
+    Returns a list of indices aligned with the row order of the CSV,
+    or None if the data file doesn't exist or has no center marker.
+    """
+    data_path = os.path.join("processed", "manual", img_name, "manual data 1D.csv")
+    if not os.path.isfile(data_path):
+        return None
+    df = pd.read_csv(data_path)
+    if "type" not in df.columns:
+        return None
+
+    # find center row
+    center_row = None
+    for ct in CENTER_TYPES:
+        matches = df.index[df["type"] == ct].to_numpy()
+        if len(matches) > 0:
+            center_row = matches[0]
+            break
+    if center_row is None:
+        return None
+
+    return [i - center_row for i in range(len(df))]
+
+
+def _label_1d_image(img_name: str, file_extension: str):
+    """
+    Read the 1D projected image and overlay tooth index labels.
+    Returns the labeled image, or None if files are missing.
+    """
+    img_path = os.path.join(
+        "processed", "manual", img_name, f"manual 1D{file_extension}"
+    )
+    if not os.path.isfile(img_path):
+        return None
+
+    img = cv2.imread(img_path)
+    indices = _compute_indices(img_name)
+    if indices is None:
+        return img
+
+    data_path = os.path.join("processed", "manual", img_name, "manual data 1D.csv")
+    df = pd.read_csv(data_path)
+    xs = df["x"].to_numpy()
+
+    for i, idx in enumerate(indices):
+        x_pos = int(xs[i])
+        # draw index number above the strip center
+        cv2.putText(
+            img,
+            str(idx),
+            (x_pos - 5, 15),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.35,
+            (255, 255, 255),
+            1,
+        )
+
+    return img
+
+
+def _build_labeled_stack(data_index: int, context: int = 2):
+    """
+    Build a vertically stacked image of labeled 1D strips for the given
+    data_index ± context dates.
+
+    Returns the stacked image and the window title string, or (None, None).
+    """
+    start = max(0, data_index - context)
+    end = min(len(DATA_DATES) - 1, data_index + context)
+
+    strips = []
+    max_width = 0
+
+    for idx in range(start, end + 1):
+        date_index = ALL_DATES.index(DATA_DATES[idx])
+        file_name = FILE_NAMES[date_index]
+        img_name, file_ext = os.path.splitext(file_name)
+        labeled = _label_1d_image(img_name, file_ext)
+        if labeled is not None:
+            if labeled.shape[1] > max_width:
+                max_width = labeled.shape[1]
+            strips.append(labeled)
+
+    if not strips or max_width == 0:
+        return None, None
+
+    # resize all strips to same width
+    resized_strips = []
+    for s in strips:
+        resized = cv2.resize(
+            s, [max_width, CONFIG.SAMPLING_WIDTH * 2], interpolation=cv2.INTER_AREA
+        )
+        resized_strips.append(resized)
+
+    stacked = np.concatenate(resized_strips, axis=0)
+    title = DATA_DATES[data_index].strftime("%m_%d_%Y") + " (reference)"
+
+    # apply MAX_WIDTH scaling
+    if CONFIG.MAX_WIDTH is not None:
+        ratio = CONFIG.MAX_WIDTH / stacked.shape[1]
+        dimension = (CONFIG.MAX_WIDTH, int(stacked.shape[0] * ratio))
+        stacked = cv2.resize(stacked, dimension, interpolation=cv2.INTER_AREA)
+
+    return stacked, title
+
 
 def _on_click(event) -> None:
     """
@@ -472,7 +584,18 @@ def _on_click(event) -> None:
         img_name, file_extension = os.path.splitext(file_name)
 
         if event.button == 3:
-            GUI(file_name, img_name, file_extension)
+            # show labeled 1D reference alongside the 2D editor
+            ref_img, ref_title = _build_labeled_stack(data_index)
+            if ref_img is not None:
+                cv2.imshow(ref_title, ref_img)
+                cv2.moveWindow(ref_title, 50, 50)
+
+            GUI(file_name, img_name, file_extension,
+                FILE_NAMES, selected_date_index, False)
+
+            # clean up reference window after GUI closes
+            if ref_img is not None:
+                cv2.destroyWindow(ref_title)
 
 
 def _on_release(event) -> None:
@@ -562,7 +685,7 @@ def _find_image_index(ydata: float) -> int:
 def _stack_img(img, max_width: int, curr_index: int):
     """
     Read projected image associated with curr_index. Resize to max_width. Stack new
-    image on top of img.
+    image on top of img. Overlays tooth index labels.
 
     Returns
     -------
@@ -571,17 +694,21 @@ def _stack_img(img, max_width: int, curr_index: int):
     curr_file_name = FILE_NAMES[curr_index]
     curr_img_name = os.path.splitext(curr_file_name)[0]
     curr_file_extension = os.path.splitext(curr_file_name)[1]
-    curr_img = cv2.imread(
-        os.path.join(
-            os.getcwd(),
-            "processed",
-            "manual",
-            curr_img_name,
-            f"manual 1D{curr_file_extension}",
+
+    labeled = _label_1d_image(curr_img_name, curr_file_extension)
+    if labeled is None:
+        labeled = cv2.imread(
+            os.path.join(
+                os.getcwd(),
+                "processed",
+                "manual",
+                curr_img_name,
+                f"manual 1D{curr_file_extension}",
+            )
         )
-    )
+
     curr_img_resized = cv2.resize(
-        curr_img, [max_width, CONFIG.SAMPLING_WIDTH * 2], interpolation=cv2.INTER_AREA
+        labeled, [max_width, CONFIG.SAMPLING_WIDTH * 2], interpolation=cv2.INTER_AREA
     )
     if img != []:
         curr_img_resized = np.concatenate((curr_img_resized, img), axis=0)
