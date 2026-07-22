@@ -154,19 +154,19 @@ between sessions.
 
 \begin{lstlisting}
 Documents/
-  GeckoData/                        <- your storage folder (name it anything)
+  GeckoData/              <- your storage folder (name it anything)
     Animals/
       animal1/
-        images/                     <- original images live here permanently
-        processed/                  <- results moved here after each session
+        img/              <- original images live here permanently
+        processed/        <- results moved here after each session
       animal2/
-        images/
+        img/
         processed/
-  Wax-Bite-Image-Processor/         <- the repository (cloned once)
+  Wax-Bite-Image-Processor/ <- the repository (cloned once)
     TemplateMatching/
-      img/                          <- working folder: copy images here to process
-      processed/                    <- working folder: results appear here
-      template/                     <- tooth templates for automated matching
+      img/                <- working folder: copy images here to process
+      processed/          <- working folder: results appear here
+      template/           <- tooth templates for automated matching
       ...
 \end{lstlisting}
 
@@ -177,7 +177,7 @@ never deleted --- you only ever work with copies inside the repository.
 
 \begin{enumerate}[leftmargin=*, label=\textbf{\arabic*.}]
   \item \textbf{Copy images into the repository.}
-    Copy all image files from \texttt{Animals/animal1/images/} into
+    Copy all image files from \texttt{Animals/animal1/img/} into
     \texttt{Wax-Bite-Image-Processor/TemplateMatching/img/}.
     Your originals remain safely in the \texttt{Animals} folder.
 
@@ -200,10 +200,23 @@ never deleted --- you only ever work with copies inside the repository.
 
 \subsection*{Image Naming}
 
-Images must be named in the format \texttt{MM\_DD\_YYYY} followed by any additional
-identifier (e.g.\ \texttt{03\_15\_2024\_LG282.jpg}). The date prefix is used to sort
-images chronologically and to label results in plots. Images without this format will
-cause errors.
+Image file names must begin with a date in one of two formats, followed by any
+additional identifier:
+
+\begin{itemize}[leftmargin=*]
+  \item \texttt{YYYY\_MM\_DD} (preferred) --- e.g.\ \texttt{2024\_03\_15\_LG282.jpg}
+  \item \texttt{MM\_DD\_YYYY} (legacy) --- e.g.\ \texttt{03\_15\_2024\_LG282.jpg}
+\end{itemize}
+
+The application detects which format is used automatically. The date prefix is used
+to sort images chronologically and to label results in plots. Images that do not
+start with a date in one of these formats will cause errors.
+
+\begin{tipbox}
+\textbf{Recommendation:} Use the \texttt{YYYY\_MM\_DD} format for new data. Files
+sort chronologically in your file browser, and all new data in the lab follows this
+convention.
+\end{tipbox}
 
 % -----------------------------------------------------------------------
 \section{One-Time Installation}
@@ -342,7 +355,43 @@ python main.py
 terminal window before running the application. On macOS: \texttt{source venv/bin/activate}.
 On Windows: \texttt{venv\textbackslash Scripts\textbackslash activate.bat}. If you forget,
 you will see a \texttt{ModuleNotFoundError}.
+
+If the code has been updated and new packages are required, run
+\texttt{pip install -r requirements.txt} after activating the virtual environment.
+There is no need to recreate the virtual environment itself.
 \end{warnbox}
+
+% -----------------------------------------------------------------------
+\section{Updating the Application}
+
+When the code has been updated, use \texttt{git pull} to download the latest version.
+Open a terminal in the \texttt{Wax-Bite-Image-Processor} folder (the top-level
+repository folder, \emph{not} the \texttt{TemplateMatching} subfolder) and run:
+
+\begin{lstlisting}
+git pull
+\end{lstlisting}
+
+Then navigate back into the \texttt{TemplateMatching} folder, activate the virtual
+environment, and install any new packages:
+
+\textbf{macOS:}
+\begin{lstlisting}
+cd TemplateMatching
+source venv/bin/activate
+pip install -r requirements.txt
+\end{lstlisting}
+
+\textbf{Windows:}
+\begin{lstlisting}
+cd TemplateMatching
+venv\Scripts\activate.bat
+pip install -r requirements.txt
+\end{lstlisting}
+
+The \texttt{pip install} step is only needed when the update includes new package
+dependencies. Running it when no new packages are required is harmless --- it will
+simply report that everything is already installed.
 
 % -----------------------------------------------------------------------
 \section{Running the Application}
@@ -383,11 +432,10 @@ python main.py [steps] [image selection flags] [display flags]
 \end{tabular}
 \end{center}
 
-The default window width is controlled by \texttt{MAX\_WIDTH} in \texttt{utils.py} (default: 800 pixels).
+The default window width is controlled by \texttt{MAX\_WIDTH} in \texttt{utils.py} (default: 1200 pixels).
 Use \texttt{--width} to override this for a session without editing the file. If the image appears
 too small or too large, try adjusting this value. A good starting point is roughly half your screen
-width. The window position on screen can be adjusted by editing \texttt{WINDOW\_X} and \texttt{WINDOW\_Y}
-in \texttt{utils.py}.
+width.
 
 \subsection*{Common Commands}
 
@@ -444,20 +492,33 @@ template matching has already been run, those results are pre-loaded as a starti
 
 \subsection*{Annotation Modes}
 
-There are four types of markers you can place:
+There are six types of markers you can place:
 
 \begin{center}
 \begin{tabular}{lll}
 \toprule
 \textbf{Mode} & \textbf{Key} & \textbf{Use for} \\
 \midrule
-Tooth        & \texttt{1} & A tooth \\
-Gap          & \texttt{2} & A gap between teeth \\
-Center Tooth & \texttt{3} & The central-most tooth (only one allowed) \\
-Center Gap   & \texttt{4} & The central-most gap (only one allowed) \\
+Tooth           & \texttt{1} & A tooth \\
+Gap             & \texttt{2} & A gap between teeth \\
+Center Tooth    & \texttt{3} & The central-most tooth (only one center allowed) \\
+Center Gap      & \texttt{4} & The central-most gap (only one center allowed) \\
+No Bite         & \texttt{5} & A position where the gecko did not bite into the wax \\
+Center No Bite  & \texttt{6} & The central-most position, in a no-bite zone (only one center allowed) \\
 \bottomrule
 \end{tabular}
 \end{center}
+
+\begin{notebox}
+\textbf{When to use No Bite:} Sometimes the gecko does not bite fully into the wax,
+leaving a region with no visible tooth or gap imprints. Use the No Bite marker
+(\texttt{5}) to indicate where teeth or gaps \emph{should} be but cannot be
+determined from the wax impression. It is important to place the correct number of
+No Bite markers in these zones so that teeth distal to the zone stay properly aligned
+across time points. Compare with neighboring rows in the index or arclength plot to
+verify the count. If the center of the jaw falls in a no-bite zone, use
+Center No Bite (\texttt{6}) for that position.
+\end{notebox}
 
 \subsection*{Keyboard Shortcuts}
 
@@ -466,10 +527,11 @@ Center Gap   & \texttt{4} & The central-most gap (only one allowed) \\
 \toprule
 \textbf{Key} & \textbf{Action} \\
 \midrule
-\texttt{1} / \texttt{2} / \texttt{3} / \texttt{4} & Switch to tooth / gap / center tooth / center gap mode \\
+\texttt{1} / \texttt{2} / \texttt{3} / \texttt{4} / \texttt{5} / \texttt{6} & Switch mode (tooth / gap / center tooth / center gap / no bite / center no bite) \\
 \texttt{Tab}        & Cycle through modes in order \\
 \texttt{Space}      & Toggle boxes on/off (view image without overlays) \\
-\texttt{S}          & Save and close current image \\
+\texttt{S}          & Save and advance to the next image \\
+\texttt{X}          & Save and stop (exit the manual loop entirely) \\
 \texttt{Q}          & Quit without saving \\
 \texttt{Esc}        & Close current image without saving \\
 $\leftarrow$ arrow  & Save and go to previous image \\
@@ -486,18 +548,25 @@ $\rightarrow$ arrow & Save and go to next image \\
 \end{itemize}
 
 \begin{warnbox}
-\textbf{Always save before closing} using \texttt{S} or the arrow keys. \texttt{Q} and
-\texttt{Esc} exit without saving the \emph{current} image, which will cause \texttt{fitproj}
-to fail for that image if no previous annotation exists for it. Images you navigated
-through using the arrow keys are saved automatically and are not affected.
+\textbf{Always save before closing} using \texttt{S}, \texttt{X}, or the arrow keys.
+\texttt{Q} and \texttt{Esc} exit without saving the \emph{current} image, which will
+cause \texttt{fitproj} to fail for that image if no previous annotation exists for it.
+Images you navigated through using the arrow keys are saved automatically and are not
+affected.
 \end{warnbox}
 
 \begin{tipbox}
+\textbf{Stopping early:} If you only need to annotate a few images, press \texttt{X}
+when you are done. This saves the current image and exits without opening the remaining
+images. \texttt{S} and the arrow keys save but continue to the next image.
+\end{tipbox}
+
+\begin{tipbox}
 \textbf{Window size:} The annotation window opens at the width set by \texttt{MAX\_WIDTH}
-in \texttt{utils.py} (default: 800 pixels), or the value passed via \texttt{--width} on
-the command line. If the image appears too small, try \texttt{python main.py manual --width 1200}
-or a larger value. Avoid resizing the window manually by dragging its edges, as this will
-cause click positions to be misaligned with markers.
+in \texttt{utils.py} (default: 1200 pixels), or the value passed via \texttt{--width} on
+the command line. If the image appears too small, increase this value; if it doesn't fit
+on your screen, decrease it. Avoid resizing the window manually by dragging its edges, as
+this will cause click positions to be misaligned with markers.
 \end{tipbox}
 
 % -----------------------------------------------------------------------
@@ -584,9 +653,9 @@ pan within the plots. Look for the toolbar at the bottom of each plot window.
 
   \item[Image appears too small or too large]
     Use the \texttt{--width} flag to set a comfortable window size, for example:
-    \texttt{python main.py manual --width 1200}. A good starting point is roughly half
+    \texttt{python main.py manual --width 1400}. A good starting point is roughly half
     your screen width. Once you find a value that works, update \texttt{MAX\_WIDTH} in
-    \texttt{utils.py} to make it the default.
+    \texttt{utils.py} (currently 1200) to make it the default.
 
   \item[Click positions are misaligned with markers]
     This can happen if the annotation window has been manually resized by dragging its
@@ -612,8 +681,8 @@ pan within the plots. Look for the toolbar at the bottom of each plot window.
 
   \item[Plots are empty or show no data]
     Make sure you have run \texttt{fitproj} on all images before running \texttt{format}
-    or \texttt{analyze}. Also check that image filenames follow the \texttt{MM\_DD\_YYYY}
-    format.
+    or \texttt{analyze}. Also check that image filenames begin with a date in
+    \texttt{YYYY\_MM\_DD} or \texttt{MM\_DD\_YYYY} format.
 
 \end{description}
 
