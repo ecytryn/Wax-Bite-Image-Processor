@@ -120,9 +120,9 @@ def format_result(display_time: bool = False) -> None:
     df_output_binary.sort_values(by=["date"], inplace=True)
     df_output_arclength.sort_values(by=["date"], inplace=True)
 
-    # trim columns with na
-    df_output_binary.dropna(axis=1, inplace=True)
-    df_output_arclength.dropna(axis=1, inplace=True)
+    # trim columns with all NaN (keep columns with some data, even if sparse)
+    df_output_binary.dropna(axis=1, how='all', inplace=True)
+    df_output_arclength.dropna(axis=1, how='all', inplace=True)
 
     df_output_binary.to_csv(os.path.join("processed", "output", "binary data.csv"))
     df_output_arclength.to_csv(
