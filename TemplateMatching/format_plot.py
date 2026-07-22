@@ -21,15 +21,16 @@ FILE_NAMES = []
 def format_result(display_time: bool = False) -> None:
     """
     Combined all output files into the desired format (one binary and one arclength result)
-
-    Params
-    ------
-    display_time: display log of time to run function
     """
     start_time = time.time()
 
     # finds path of all data files, sorted
     data_paths = search_file(CONFIG.RESULT_PATH, CONFIG.DATA_FILENAME)
+    print(f"\n=== DEBUG: format_result ===")
+    print(f"Found {len(data_paths)} data files")
+    for i, path in enumerate(data_paths):
+        print(f"  [{i}] {path}")
+    
     max_center_index = 0
     max_length = 0
     center_indecies = []
@@ -41,11 +42,17 @@ def format_result(display_time: bool = False) -> None:
         subdirname = os.path.basename(os.path.dirname(data_paths[i]))
         date = parse_date(subdirname)
         dates.append(date)
+        print(f"\n[Loop 1, i={i}] Processing '{subdirname}'")
 
         # find center index
         center_tooth = df.index[df["type"] == "Tooth.CENTER_T"].to_numpy()
         center_gap = df.index[df["type"] == "Tooth.CENTER_G"].to_numpy()
         center_nobite = df.index[df["type"] == "Tooth.CENTER_N"].to_numpy()
+        
+        print(f"  CENTER_T indices: {center_tooth}")
+        print(f"  CENTER_G indices: {center_gap}")
+        print(f"  CENTER_N indices: {center_nobite}")
+        
         if len(center_tooth) > 0:
             center_index = center_tooth[0]
         elif len(center_gap) > 0:
@@ -53,16 +60,25 @@ def format_result(display_time: bool = False) -> None:
         elif len(center_nobite) > 0:
             center_index = center_nobite[0]
         else:
-            print(
-                f"WARNING: No center marker found for '{subdirname}' — skipping this date."
-            )
+            print(f"  WARNING: No center marker found — SKIPPING")
             continue
+
+        center_indecies.append(center_index)
+        print(f"  Center index: {center_index}")
 
         # update max length, update max center index if applicable
         if center_index > max_center_index:
             max_center_index = center_index
         if len(df) > max_length:
             max_length = len(df)
+
+    print(f"\n=== After Loop 1 ===")
+    print(f"Total dates collected: {len(dates)}")
+    print(f"Total center_indecies collected: {len(center_indecies)}")
+    print(f"Dates: {[d.strftime('%Y_%m_%d') for d in dates]}")
+    print(f"Center indices: {center_indecies}")
+    
+    # ... rest of function
 
     # setup dataframe to store desired data (1 column for date + the rest for teeth indecies)
     column_ids = np.array(range(max_center_index + max_length - 1)) - max_center_index
