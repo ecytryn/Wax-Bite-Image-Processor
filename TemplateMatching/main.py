@@ -1,20 +1,22 @@
-# library imports 
+# library imports
 import os
 import sys
 
+from format_plot import analyze_result, format_erupfall, format_result, plot_result
+from GUI import GUI
+from helper import flag_to_integer, suffix
+
 # modules
 from ImageProcessor import ImageProcessor
-from utils import Match, CONFIG
-from helper import suffix, flag_to_integer
-from format_plot import analyze_result, format_result, plot_result, format_erupfall
+from utils import CONFIG
 
-
-#-----------------------------------------------------------
+# -----------------------------------------------------------
 "PROCESSES"
+
 
 def workflow_one(files: list[str]) -> None:
     """
-    Processes images through "workflow one", which encompasses 
+    Processes images through "workflow one", which encompasses
     template matching -> manual matching -> filtering
     -> fit projecting -> formating / plotting of results
 
@@ -27,8 +29,7 @@ def workflow_one(files: list[str]) -> None:
     manual(files)
     fitproj(files)
     format()
-        
-    
+
 
 def match(files: list[str]):
     """
@@ -51,9 +52,13 @@ def manual(files: list[str]):
     ------
     images: list of paths for images to processes
     """
+    GUI.stop_requested = False  # reset at the start of each run
     for file_index in range(len(files)):
         process_img = ImageProcessor(files, file_index)
         process_img.manual(True)
+        if GUI.stop_requested:
+            print("Save-and-exit requested — stopping manual processing.")
+            break
 
 
 def fitproj(files: list[str]):
@@ -65,9 +70,24 @@ def fitproj(files: list[str]):
     images: list of paths for images to processes
     """
     for file_index in range(len(files)):
-        process_img = ImageProcessor(files, file_index)
-        process_img.filter(True)
-        process_img.fit_project(True)
+        img_name = os.path.splitext(files[file_index])[0]
+        manual_path = os.path.join("processed", "manual", img_name, "manual data.csv")
+        proj_path = os.path.join("processed", "projection", img_name, "projection.csv")
+
+        # skip if projection is already up to date
+        if os.path.isfile(proj_path) and os.path.isfile(manual_path):
+            if os.path.getmtime(proj_path) >= os.path.getmtime(manual_path):
+                print(
+                    f"SKIP        | '{files[file_index]}': unchanged since last fitproj"
+                )
+                continue
+
+        try:
+            process_img = ImageProcessor(files, file_index)
+            process_img.filter(True)
+            process_img.fit_project(True)
+        except RuntimeError as e:
+            print(f"WARNING: Skipping '{files[file_index]}' — {e}")
 
 
 def format() -> None:
@@ -86,11 +106,8 @@ def analyze() -> None:
     analyze_result(True)
 
 
-
-
-#-----------------------------------------------------------
+# -----------------------------------------------------------
 if __name__ == "__main__":
-
     # obtains arguments
     args = sys.argv
 
@@ -99,23 +116,28 @@ if __name__ == "__main__":
         width_index = args.index("--width")
         try:
             custom_width = int(args[width_index + 1])
-            args.pop(width_index)      # remove --width
-            args.pop(width_index)      # remove the value
+            args.pop(width_index)  # remove --width
+            args.pop(width_index)  # remove the value
         except (ValueError, IndexError):
-            raise ValueError("--width must be followed by an integer, e.g. --width 1200")
+            raise ValueError(
+                "--width must be followed by an integer, e.g. --width 1200"
+            )
     else:
         custom_width = None
 
     if custom_width is not None:
         from utils import apply_custom_width
+
         apply_custom_width(custom_width)
 
     # bool structure for which processes to run
-    processes = {"match": False,
-                 "manual": False,
-                 "fitproj": False,
-                 "format": False,
-                 "analyze": False}
+    processes = {
+        "match": False,
+        "manual": False,
+        "fitproj": False,
+        "format": False,
+        "analyze": False,
+    }
     if "match" in args:
         processes["match"] = True
     if "manual" in args:
@@ -126,41 +148,61 @@ if __name__ == "__main__":
         processes["format"] = True
     if "analyze" in args:
         processes["analyze"] = True
-    
-    # all other arguments 
-    args = [arg for arg in args if (arg not in {"match", "manual", "fitproj", "format", "analyze", "main.py"})]
-    # all images in image 
-    files = sorted([file for file in os.listdir(os.path.join(os.getcwd(),"img")) if suffix(file) in CONFIG.FILE_TYPES])
+
+    # all other arguments
+    args = [
+        arg
+        for arg in args
+        if (arg not in {"match", "manual", "fitproj", "format", "analyze", "main.py"})
+    ]
+    # all images in image
+    files = sorted(
+        [
+            file
+            for file in os.listdir(os.path.join(os.getcwd(), "img"))
+            if suffix(file) in CONFIG.FILE_TYPES
+        ]
+    )
     num_of_images = len(files)
-    
-    # if flags -s or -n exist 
+
+    # if flags -s or -n exist
     if "-s" in args or "-n" in args:
         start_index = flag_to_integer(args, "-s") if "-s" in args else 0
-        num_to_process = flag_to_integer(args, "-n") if "-n" in args else (num_of_images - start_index)
+        num_to_process = (
+            flag_to_integer(args, "-n")
+            if "-n" in args
+            else (num_of_images - start_index)
+        )
         # get images
-        files = files[start_index : min(start_index+num_to_process,num_of_images)]
+        files = files[start_index : min(start_index + num_to_process, num_of_images)]
         # if empty set, raise error
         if len(files) == 0:
             raise RuntimeError(f"""Empty list detected: either starting index {start_index} 
-            is out of bounds (min = 0, max = {num_of_images-1}) or flag -n < 1""")
-        
-        print(f"""Processing images indexed {start_index} to {min(start_index+num_to_process-1,num_of_images-1)} 
+            is out of bounds (min = 0, max = {num_of_images - 1}) or flag -n < 1""")
+
+        print(f"""Processing images indexed {start_index} to {min(start_index + num_to_process - 1, num_of_images - 1)} 
         (index starts at 0): '{files[0]}' to '{files[-1]}'""")
-        
+
     # if no flags but there's still arguments, assume those are "named images"
     elif len(args) > 0:
-        files = sorted([arg for arg in args if os.path.isfile(os.path.join("img", arg))])
+        files = sorted(
+            [arg for arg in args if os.path.isfile(os.path.join("img", arg))]
+        )
         print(f"Processing images {files}")
-    # else process all 
+    # else process all
     else:
-        print(f"Processing all images")
+        print("Processing all images")
 
     # if no processes named, run all
-    if not any([processes["match"], 
-                processes["manual"], 
-                processes["fitproj"], 
-                processes["format"],
-                processes["analyze"]]):
+    if not any(
+        [
+            processes["match"],
+            processes["manual"],
+            processes["fitproj"],
+            processes["format"],
+            processes["analyze"],
+        ]
+    ):
         print("Running: all")
         workflow_one(files)
     else:
@@ -180,8 +222,3 @@ if __name__ == "__main__":
         if processes["analyze"]:
             print("Running: Analyze")
             analyze()
-
-
-
-
-
