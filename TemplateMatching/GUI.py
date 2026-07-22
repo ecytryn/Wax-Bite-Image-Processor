@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 import pandas as pd
 from pynput.keyboard import Controller
-
 from utils import CONFIG, Match, Tooth
 
 # Windows DPI awareness fix
@@ -43,7 +42,14 @@ class GUI:
     """
 
     # tooth, gap, center tooth, center gap: 4 modes
-    MODES = [Tooth.TOOTH, Tooth.GAP, Tooth.CENTER_T, Tooth.CENTER_G]
+    MODES = [
+        Tooth.TOOTH,
+        Tooth.GAP,
+        Tooth.CENTER_T,
+        Tooth.CENTER_G,
+        Tooth.NO_BITE,
+        Tooth.CENTER_N,
+    ]
     stop_requested = False  # class variable — signals the main loop to stop
 
     def __init__(
@@ -139,6 +145,10 @@ class GUI:
                         self.type = np.append(self.type, Tooth.ERROR_T)
                     elif i == "Tooth.ERROR_G":
                         self.type = np.append(self.type, Tooth.ERROR_G)
+                    elif i == "Tooth.NO_BITE":
+                        self.type = np.append(self.type, Tooth.NO_BITE)
+                    elif i == "Tooth.CENTER_N":
+                        self.type = np.append(self.type, Tooth.CENTER_N)
 
         # reads image, set up mouse callback
         self.image = cv2.imread(img_path)
@@ -209,6 +219,26 @@ class GUI:
                 text_img = cv2.putText(
                     self.clone,
                     "mode: center gap",
+                    (10, 40),
+                    cv2.FONT_HERSHEY_DUPLEX,
+                    1.5,
+                    CONFIG.CENTER,
+                    2,
+                )
+            elif self._curr_mode == Tooth.NO_BITE:
+                text_img = cv2.putText(
+                    self.clone,
+                    "mode: no bite",
+                    (10, 40),
+                    cv2.FONT_HERSHEY_DUPLEX,
+                    1.5,
+                    CONFIG.NO_BITE,
+                    2,
+                )
+            elif self._curr_mode == Tooth.CENTER_N:
+                text_img = cv2.putText(
+                    self.clone,
+                    "mode: center no bite",
                     (10, 40),
                     cv2.FONT_HERSHEY_DUPLEX,
                     1.5,
@@ -341,6 +371,12 @@ class GUI:
         elif key == ord("4"):  # 4
             self._curr_mode = Tooth.CENTER_G
             self.mode_index = 3
+        elif key == ord("5"):  # 5
+            self._curr_mode = Tooth.NO_BITE
+            self.mode_index = 4
+        elif key == ord("6"):  # 6
+            self._curr_mode = Tooth.CENTER_N
+            self.mode_index = 5
         elif (key in (2, 2424832) and self.index > 0) or (
             key in (3, 2555904) and self.index < len(self.file_names) - 1
         ):
@@ -448,7 +484,12 @@ class GUI:
         elif type == Tooth.ERROR_G:
             color = CONFIG.ERROR
             altered_img = GUI._draw_label(image, x + OFFSET_X, y + OFFSET_Y, color, "G")
-
+        elif type == Tooth.NO_BITE:
+            color = CONFIG.NO_BITE
+            altered_img = GUI._draw_label(image, x + OFFSET_X, y + OFFSET_Y, color, "N")
+        elif type == Tooth.CENTER_N:
+            color = CONFIG.CENTER
+            altered_img = GUI._draw_label(image, x + OFFSET_X, y + OFFSET_Y, color, "N")
         if curr_mode != Tooth.NO_BOX:
             altered_img = GUI._draw_rectangle(
                 altered_img, start_x, start_y, end_x, end_y, color
@@ -569,15 +610,15 @@ class GUI:
                     break
 
             # if the user clicks a new center, delete the old one
-            if draw and (
-                self._curr_mode == Tooth.CENTER_T or self._curr_mode == Tooth.CENTER_G
+            if draw and self._curr_mode in (
+                Tooth.CENTER_T,
+                Tooth.CENTER_G,
+                Tooth.CENTER_N,
             ):
-                center_t = np.where(self.type == Tooth.CENTER_T)
-                for index in center_t[0]:
-                    self._delete_index_data(index)
-                center_g = np.where(self.type == Tooth.CENTER_G)
-                for index in center_g[0]:
-                    self._delete_index_data(index)
+                for center_type in (Tooth.CENTER_T, Tooth.CENTER_G, Tooth.CENTER_N):
+                    center_indices = np.where(self.type == center_type)
+                    for index in center_indices[0]:
+                        self._delete_index_data(index)
 
             # otherwise, draw a square at the clicked location
             if draw:

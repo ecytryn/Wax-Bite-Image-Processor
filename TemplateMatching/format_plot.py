@@ -6,11 +6,10 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.cm import ScalarMappable
-from matplotlib.colors import Normalize
-
 from GUI import GUI
 from helper import parse_date, suffix
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 from period_phase_asym import plot_period_phase_asym
 from utils import CONFIG
 
@@ -46,10 +45,13 @@ def format_result(display_time: bool = False) -> None:
         # find center index
         center_tooth = df.index[df["type"] == "Tooth.CENTER_T"].to_numpy()
         center_gap = df.index[df["type"] == "Tooth.CENTER_G"].to_numpy()
+        center_nobite = df.index[df["type"] == "Tooth.CENTER_N"].to_numpy()
         if len(center_tooth) > 0:
             center_index = center_tooth[0]
         elif len(center_gap) > 0:
             center_index = center_gap[0]
+        elif len(center_nobite) > 0:
+            center_index = center_nobite[0]
         else:
             print(
                 f"WARNING: No center marker found for '{subdirname}' — skipping this date."
@@ -78,16 +80,14 @@ def format_result(display_time: bool = False) -> None:
         # arclength representation = x values of projection (relative to center)
         arclength_data_rep = x - df["x"][center_indecies[i]]
         # binary data representation = 1 for teeth, 0 for gap
-        binary_data_rep = [
-            1
-            if (
-                types[i] == "Tooth.TOOTH"
-                or types[i] == "Tooth.CENTER_T"
-                or types[i] == "Tooth.ERROR_T"
-            )
-            else 0
-            for i in range(len(x))
-        ]
+        binary_data_rep = []
+        for i in range(len(x)):
+            if types[i] in ("Tooth.TOOTH", "Tooth.CENTER_T", "Tooth.ERROR_T"):
+                binary_data_rep.append(1)
+            elif types[i] in ("Tooth.NO_BITE", "Tooth.CENTER_N"):
+                binary_data_rep.append(float("nan"))
+            else:
+                binary_data_rep.append(0)
 
         # add front and back padding to obtain the correct shape to insert into dataframe
         arclength_data_rep_pad = padding(
@@ -153,24 +153,43 @@ def format_erupfall(display_time: bool = False) -> None:
 
         no_erup_so_far = 0
         no_fall_so_far = 0
+        last_known = binary_column[0]  # last non-NaN value
 
         for entry_index in range(1, len(dates)):
-            prev_val = binary_column[entry_index - 1]
             curr_val = binary_column[entry_index]
 
-            if prev_val == 0 and curr_val == 1:
+            # skip NaN entries — increment counters but don't detect events
+            if np.isnan(curr_val):
+                no_erup_so_far += 1
+                no_fall_so_far += 1
+                eruption_column.append(0)
+                fall_out_column.append(0)
+                continue
+
+            # if last_known is NaN (first entry was NaN), can't detect transitions
+            if np.isnan(last_known):
+                no_erup_so_far += 1
+                no_fall_so_far += 1
+                eruption_column.append(0)
+                fall_out_column.append(0)
+                last_known = curr_val
+                continue
+
+            if last_known == 0 and curr_val == 1:
                 eruption_column.append(no_erup_so_far + 1)
                 no_erup_so_far = 0
             else:
                 no_erup_so_far += 1
                 eruption_column.append(0)
 
-            if prev_val == 1 and curr_val == 0:
+            if last_known == 1 and curr_val == 0:
                 fall_out_column.append(no_fall_so_far + 1)
                 no_fall_so_far = 0
             else:
                 no_fall_so_far += 1
                 fall_out_column.append(0)
+
+            last_known = curr_val
 
         eruption_data[column_index] = eruption_column
         fall_out_data[column_index] = fall_out_column
@@ -212,6 +231,8 @@ def plot_result(display_time: bool = False) -> None:
     arc_tooth_x, arc_gap_x = [], []
     bin_tooth_x, bin_gap_x = [], []
     tooth_y, gap_y = [], []
+    arc_nobite_x, bin_nobite_x, nobite_y = [], [], []
+
     # parse string into dates from output file
 
     dates = [datetime.strptime(d, "%Y-%m-%d") for d in df_arclength["date"]]
@@ -226,7 +247,12 @@ def plot_result(display_time: bool = False) -> None:
             bin_entry = df_binary[column_index][entry_index]
 
             # if exists
-            if not pd.isna(bin_entry):
+            if pd.isna(bin_entry):
+                # no-bite marker
+                arc_nobite_x.append(float(arc_entry))
+                bin_nobite_x.append(float(column_index))
+                nobite_y.append(dates[entry_index])
+            else:
                 # if a tooth
                 if int(bin_entry) == 1:
                     arc_tooth_x.append(float(arc_entry))
@@ -304,9 +330,12 @@ def plot_result(display_time: bool = False) -> None:
     # plot data
     arc_ax.scatter(arc_tooth_x, tooth_y, c="indigo", s=15)
     arc_ax.scatter(arc_gap_x, gap_y, c="lightgray", s=15)
+    if nobite_y:
+        arc_ax.scatter(arc_nobite_x, nobite_y, c="steelblue", s=15, marker="^")
     bin_ax.scatter(bin_tooth_x, tooth_y, c="indigo", s=15)
     bin_ax.scatter(bin_gap_x, gap_y, c="lightgray", s=15)
-
+    if nobite_y:
+        bin_ax.scatter(bin_nobite_x, nobite_y, c="steelblue", s=15, marker="^")
     erup_ax.scatter(erup_x, erup_y, c=c_erupt, s=50, cmap="winter")
     # erup_ax.scatter(nerup_x, nerup_y, c="lightgray", s=20)
     fall_ax.scatter(fall_x, fall_y, c=c_fall, s=50, cmap="winter")

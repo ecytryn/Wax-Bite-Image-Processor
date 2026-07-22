@@ -53,15 +53,15 @@ def extract_eruption_events(binary_csv_path: str) -> np.ndarray:
         position = int(col)
         values = df[col].to_numpy()
 
+        last_known = values[0]
         for i in range(1, len(values)):
-            prev_val = values[i - 1]
             curr_val = values[i]
-            if not np.isnan(prev_val) and not np.isnan(curr_val):
-                if int(prev_val) == 0 and int(curr_val) == 1:
-                    # assign eruption to the observation where tooth
-                    # first appears (the MATLAB convention assigns it
-                    # one step earlier; intervals are identical either way)
+            if np.isnan(curr_val):
+                continue
+            if not np.isnan(last_known):
+                if int(last_known) == 0 and int(curr_val) == 1:
                     events.append([position, day_numbers[i]])
+            last_known = curr_val
 
     events = np.array(events) if events else np.empty((0, 2))
 
