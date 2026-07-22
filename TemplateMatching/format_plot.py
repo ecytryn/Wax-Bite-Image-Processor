@@ -92,6 +92,13 @@ def format_result(display_time: bool = False) -> None:
         df = pd.read_csv(data_paths[i])
         x = df["x"].to_numpy()
         types = df["type"]
+        
+        print(f"\n[Loop 2, i={i}] Date: {dates[i]}")
+        print(f"  len(dates) = {len(dates)}")
+        print(f"  len(center_indecies) = {len(center_indecies)}")
+        print(f"  Accessing center_indecies[{i}] = {center_indecies[i]}")
+        print(f"  df has {len(df)} rows")
+        print(f"  len(x) = {len(x)}")
 
         # arclength representation = x values of projection (relative to center)
         arclength_data_rep = x - df["x"][center_indecies[i]]
