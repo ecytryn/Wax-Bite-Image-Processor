@@ -614,15 +614,22 @@ interactive windows:
 \subsection*{Interacting with the plots}
 
 \begin{itemize}[leftmargin=*]
-  \item \textbf{Left click} on a point: opens the projected 1D image for that date
+  \item \textbf{Left click} on a point: opens the projected 1D image for that date.
+        Each tooth position is labeled with its index number (relative to the center
+        marker, which is index~0).
   \item \textbf{Left click and drag} across a range of dates: opens the projected 1D
         images for all dates in the selected range, stacked vertically and aligned to
-        the same width. This is useful for visually comparing annotations across nearby
-        days and identifying errors such as a tooth misidentified as a gap, or a missed
-        gap causing all teeth distal to it to appear shifted relative to other days.
-  \item \textbf{Right click} (ctrl+click on Mac): opens the manual annotation tool for
-        that date. Note: changes will not appear in the plots until you re-run
-        \texttt{format} or \texttt{analyze}.
+        the same width, with index labels on each strip. This is useful for visually
+        comparing annotations across nearby days and identifying errors such as a tooth
+        misidentified as a gap, or a missed gap causing all teeth distal to it to appear
+        shifted relative to other days.
+  \item \textbf{Right click} (ctrl+click on Mac): opens two windows side by side ---
+        the manual annotation tool for that date, and a reference window showing the
+        labeled 1D strips for that date and its two nearest neighbors. Both views show
+        tooth index numbers, making it easy to identify a problematic tooth in the 1D
+        reference and locate it in the 2D editor. The reference window closes
+        automatically when you close the editor. Note: changes will not appear in the
+        plots until you re-run \texttt{format} or \texttt{analyze}.
 \end{itemize}
 
 \begin{tipbox}
