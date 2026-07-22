@@ -71,12 +71,6 @@ def format_result(display_time: bool = False) -> None:
             max_center_index = center_index
         if len(df) > max_length:
             max_length = len(df)
-
-    print(f"\n=== After Loop 1 ===")
-    print(f"Total dates collected: {len(dates)}")
-    print(f"Total center_indecies collected: {len(center_indecies)}")
-    print(f"Dates: {[d.strftime('%Y_%m_%d') for d in dates]}")
-    print(f"Center indices: {center_indecies}")
     
     # ... rest of function
 
@@ -93,21 +87,14 @@ def format_result(display_time: bool = False) -> None:
         x = df["x"].to_numpy()
         types = df["type"]
         
-        print(f"\n[Loop 2, i={i}] Date: {dates[i]}")
-        print(f"  len(dates) = {len(dates)}")
-        print(f"  len(center_indecies) = {len(center_indecies)}")
-        print(f"  Accessing center_indecies[{i}] = {center_indecies[i]}")
-        print(f"  df has {len(df)} rows")
-        print(f"  len(x) = {len(x)}")
-
         # arclength representation = x values of projection (relative to center)
         arclength_data_rep = x - df["x"][center_indecies[i]]
         # binary data representation = 1 for teeth, 0 for gap
         binary_data_rep = []
-        for i in range(len(x)):
-            if types[i] in ("Tooth.TOOTH", "Tooth.CENTER_T", "Tooth.ERROR_T"):
+        for j in range(len(x)):
+            if types[j] in ("Tooth.TOOTH", "Tooth.CENTER_T", "Tooth.ERROR_T"):
                 binary_data_rep.append(1)
-            elif types[i] in ("Tooth.NO_BITE", "Tooth.CENTER_N"):
+            elif types[j] in ("Tooth.NO_BITE", "Tooth.CENTER_N"):
                 binary_data_rep.append(float("nan"))
             else:
                 binary_data_rep.append(0)
